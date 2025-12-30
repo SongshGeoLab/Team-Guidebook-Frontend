@@ -8,6 +8,7 @@
   - `layouts/`: Shared layouts (e.g., `BaseLayout.astro`).
   - `components/`: UI components.
 - `public/attachments/`: Static assets synced from the Obsidian vault (see Attachments section).
+- `public/background.jpg`: React Ripple 背景纹理，前端同事更新背景时只需替换此文件。
 - `.content/` (gitignored): Symlink/clone target directory for Obsidian content in dev/CI.
 - `scripts/setup-content.mjs`: Content bootstrapper. Prefers `CONTENT_DIR` (symlink to `.content/`), else `CONTENT_REPO_URL` (+ optional `CONTENT_REPO_REF`) to clone, else falls back to local `Team-Guidebook/`. Wired via `predev`/`prebuild` and `setup:content`.
 
@@ -94,6 +95,8 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - The master layout template.
   - Handles `<head>` metadata, global CSS imports (`styles/global.css`), and the basic page structure (HTML/Body).
   - Integrates `Header` and `Footer` components.
+  - Mounts `RippleBackground` (React island, `client:load`) as全局水波背景，叠加渐变遮罩；内容层使用更高 z-index 以确保交互。
+  - 布局结构：`body` 使用 `flex flex-col`，包含 `RippleBackground` 和内容层（`relative z-10`），确保背景在底层，内容在上层。
   - Accepts `title`, `description`, and `lang` props for SEO and accessibility.
 
 - **`src/components/Header.astro`**:
@@ -106,6 +109,53 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
 - **`src/components/Footer.astro`**:
   - Page footer.
   - Contains copyright info and secondary links.
+
+- **`src/components/react/layout/ReactBaseLayout.tsx`**:
+  - React 布局壳，包含导航、语言切换、页脚；接收 `lang`、`activePage`、`children`。
+  - 背景：嵌入 `RippleBackground`，设置 `BG_IMAGE = '/background.jpg'`，由 Astro 布局控制层级。
+  - 导航：静态 7 个入口，语言切换通过 `/zh`/`/en`。
+
+- **`src/components/react/RippleBackground.tsx`**:
+  - three + @react-three/fiber + @react-three/drei 实现的 GPU 水波动效；使用 FBO 迭代模拟与噪声扰动。
+  - 依赖 `public/background.jpg` 作为纹理；缺省即可加载，替换文件即可换图。
+  - 可在需要时从 `BaseLayout.astro` 暂停注入以禁用动效。
+
+- **`src/components/react/pages/*`**:
+  - 前端同事提供的页面级 UI 组件（Home/People/Projects/News/Publications/Library）。
+  - 纯展示，不做数据拉取；由对应 Astro 页面用 `getCollection()` 取数后透传 props。
+  - **`HomePage.tsx`**: 首页组件，接收 `news` 和 `projects` props，展示最新动态和精选项目。
+  - **`PeoplePage.tsx`**: 成员列表页组件，接收 `people` 数组，按角色分组展示。
+  - **`ProjectsPage.tsx`**: 项目列表页组件，接收 `projects` 和 `people` 数组，展示项目卡片网格。
+  - **`NewsPage.tsx`**: 动态页组件，接收 `news` 数组，支持时间轴和日历两种视图切换。
+  - **`PublicationsPage.tsx`**: 出版物列表页组件，接收 `publications` 数组，支持按年份和标签筛选。
+  - **`LibraryPage.tsx`**: 图书馆索引页组件，接收 `items` 数组，以卡片网格形式展示知识库内容。
+
+- **`src/components/react/ui/*`**:
+  - 可复用的 UI 组件库。
+  - **`GlassCard.tsx`**: 毛玻璃效果卡片组件，支持点击交互和自定义样式。
+  - **`NewsTimeline.tsx`**: 新闻时间轴组件，展示带时间线的新闻列表。
+  - **`NewsCalendar.tsx`**: 新闻日历组件，按月份分组展示新闻。
+  - **`CitationItem.tsx`**: 引用项组件，展示出版物信息，支持 BibTeX 复制和 PDF 下载。
+
+- **`src/components/react/types.ts`**:
+  - 定义所有 React 组件使用的 TypeScript 类型接口。
+  - 包括 `Person`, `Project`, `NewsItem`, `Publication`, `LibraryItem` 等类型。
+  - 作为 Astro 页面和 React 组件之间的数据契约。
+
+- **`src/pages/[lang]/*/index.astro`** (数据层):
+  - **职责**: Astro 页面负责数据获取和转换，然后传递给 React 组件。
+  - **数据获取**: 使用 `getCollection()` API 从 Content Collections 获取数据。
+  - **数据转换**: 将 Content Collections 的数据格式转换为 React 组件期望的 props 格式。
+  - **组件挂载**: 使用 `client:load` 指令挂载 React 组件，确保客户端交互正常工作。
+  - **示例**:
+    - `src/pages/zh/people/index.astro`: 获取所有 people，转换为 `Person[]` 格式，传递给 `PeoplePage`。
+    - `src/pages/zh/projects/index.astro`: 获取 projects 和 people，转换为对应格式，传递给 `ProjectsPage`。
+    - `src/pages/zh/library/index.astro`: 获取 library items，转换为 `LibraryItem[]` 格式，传递给 `LibraryPage`。
+
+- **`src/pages/[lang]/*/[slug].astro`** (详情页):
+  - **People 详情页** (`/[lang]/people/[slug].astro`): 使用 `getStaticPaths()` 生成所有成员的路由，渲染成员详情。
+  - **Projects 详情页** (`/[lang]/projects/[slug].astro`): 使用 `getStaticPaths()` 生成所有项目的路由，渲染项目详情。
+  - **Library 详情页** (`/[lang]/library/[...slug].astro`): 使用 `getStaticPaths()` 生成所有知识库页面的路由，支持任意深度的路径。
 
 - **Root Redirect**:
   - **Implementation**: Configured in `astro.config.mjs` via `redirects: { '/': '/zh/' }`.
@@ -367,8 +417,27 @@ The following files/directories are gitignored to prevent committing development
 - **`.content/`** (directory): The working directory for Obsidian content (symlinked or cloned).
 - **`.content`** (file): Regular file that may be accidentally created (should be a symlink directory).
 - **`src/content`**: Symlinked directories pointing to `.content/Team-Guidebook/` subdirectories.
-- **`public/`**: Generated static assets (attachments synced from Obsidian vault).
+- **`public/`**: Generated static assets (attachments synced from Obsidian vault, background images).
 - **`.astro/`**: Generated TypeScript types from Content Collections.
 - **`dist/`**: Build output directory.
 
 **Important**: The `.content` file (not directory) should never be committed, as it contains absolute file system paths and conflicts with the symlink strategy used by `setup-content.mjs`.
+
+### 13) React Islands Architecture (Frontend Integration)
+
+项目采用 **Astro Islands** 架构，将 React 组件作为"岛屿"嵌入到静态 HTML 中：
+
+- **数据流向**: `Astro 页面 (getCollection)` → `数据转换` → `React 组件 (props)`
+- **组件挂载**: 使用 `client:load` 指令确保 React 组件在客户端正常交互。
+- **类型安全**: `src/components/react/types.ts` 定义了所有组件的数据契约。
+- **组件组织**:
+  - `src/components/react/pages/`: 页面级组件（HomePage, PeoplePage, ProjectsPage, NewsPage, PublicationsPage, LibraryPage）
+  - `src/components/react/ui/`: 可复用的 UI 组件（GlassCard, NewsTimeline, NewsCalendar, CitationItem）
+  - `src/components/react/layout/`: 布局组件（ReactBaseLayout - 可选，当前使用 Astro BaseLayout）
+  - `src/components/react/RippleBackground.tsx`: 全局背景动效组件
+
+- **关键原则**:
+  - React 组件不直接访问文件系统或 Content Collections。
+  - 所有数据由 Astro 页面获取并转换为组件期望的格式。
+  - 组件保持纯展示逻辑，交互通过 props 回调处理。
+  - 背景和全局动效通过 `BaseLayout.astro` 统一管理。

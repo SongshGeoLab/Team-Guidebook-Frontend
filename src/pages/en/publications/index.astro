@@ -1,12 +1,22 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { PublicationsPage } from '../../../components/react/pages/PublicationsPage';
+
+const allPubs = await getCollection('publications', ({ data }) => data.publish !== false);
+const publications = allPubs.map((pub) => ({
+  id: pub.id,
+  title: pub.data.title || pub.id,
+  authors: pub.data.authors || [],
+  venue: pub.data.venue,
+  year: typeof pub.data.year === 'number' ? pub.data.year : Number(pub.data.year),
+  tags: pub.data.tags || [],
+  url: pub.data.pdf || pub.data.url,
+  bibtex: pub.data.bibtex
+}));
 ---
 
 <BaseLayout title="Publications" description="Papers and publications" lang="en">
-  <div class="prose dark:prose-invert max-w-none">
-    <h1>Publications</h1>
-    <p class="lead">Structured publications from BibTeX will be listed here.</p>
-    <p class="text-sm text-gray-500 dark:text-gray-400">Year/topic filters will be added later.</p>
-  </div>
+  <PublicationsPage client:load lang="en" publications={publications} />
 </BaseLayout>
 

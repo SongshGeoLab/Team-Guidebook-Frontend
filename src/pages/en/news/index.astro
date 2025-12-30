@@ -1,88 +1,26 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { NewsPage } from '../../../components/react/pages/NewsPage';
 
-// Get all news, filtered by publish status
 const allNews = await getCollection('news', ({ data }) => data.publish !== false);
-
-// Get all people for name lookup
-const allPeople = await getCollection('people', ({ data }) => data.publish !== false);
-const peopleMap = new Map(allPeople.map((p) => [p.id, { name: p.data.name, id: p.id }]));
-
-// Sort news by date (newest first)
-const sortedNews = allNews.sort((a, b) => {
-  const dateA = a.data.date instanceof Date ? a.data.date : new Date(a.data.date);
-  const dateB = b.data.date instanceof Date ? b.data.date : new Date(b.data.date);
-  return dateB.getTime() - dateA.getTime();
-});
+const news = allNews
+  .sort((a, b) => {
+    const dateA = a.data.date instanceof Date ? a.data.date : new Date(a.data.date);
+    const dateB = b.data.date instanceof Date ? b.data.date : new Date(b.data.date);
+    return dateB.getTime() - dateA.getTime();
+  })
+  .map((item) => ({
+    id: item.id,
+    title: item.data.title || item.id,
+    date: (item.data.date instanceof Date ? item.data.date : new Date(item.data.date)).toISOString(),
+    content: item.data.content || '',
+    tags: item.data.tags || [],
+    related_people: item.data.related_people || []
+  }));
 ---
 
 <BaseLayout title="News" description="Lab news and updates" lang="en">
-  <div class="prose dark:prose-invert max-w-none">
-    <h1>News</h1>
-    <p class="lead">Latest news and updates from the lab.</p>
-    
-    {sortedNews.length > 0 ? (
-      <div class="space-y-8 mt-8">
-        {sortedNews.map((item) => {
-          const date = item.data.date instanceof Date ? item.data.date : new Date(item.data.date);
-          return (
-            <article key={item.id} class="border-l-4 border-blue-500 pl-6 py-4">
-              <div class="flex items-center gap-4 mb-3">
-                <time 
-                  datetime={date.toISOString()}
-                  class="text-sm font-semibold text-gray-600 dark:text-gray-400"
-                >
-                  {date.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    weekday: 'long'
-                  })}
-                </time>
-                {item.data.tags && item.data.tags.length > 0 && (
-                  <div class="flex flex-wrap gap-2">
-                    {item.data.tags.map((tag) => (
-                      <span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              <div class="mt-2" set:html={item.data.content} />
-              
-              {item.data.related_people && item.data.related_people.length > 0 && (
-                <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                  <strong>Related People:</strong>
-                  {item.data.related_people.map((personId, index) => {
-                    const person = peopleMap.get(personId);
-                    return (
-                      <>
-                        {index > 0 && ', '}
-                        {person ? (
-                          <a 
-                            href={`/en/people/${person.id}`}
-                            class="text-blue-600 hover:underline"
-                          >
-                            {person.name}
-                          </a>
-                        ) : (
-                          <span>{personId}</span>
-                        )}
-                      </>
-                    );
-                  })}
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </div>
-    ) : (
-      <p class="text-gray-500 dark:text-gray-400 mt-8">No news yet</p>
-    )}
-  </div>
+  <NewsPage client:load lang="en" news={news} />
 </BaseLayout>
 

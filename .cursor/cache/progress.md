@@ -87,3 +87,41 @@
         - Created `src/pages/test-collections.astro` to verify Content Collections are working correctly.
         - Test page displays counts and sample entries from all collections.
         - Verified data loading: People (1 item), Library (16 items), Projects (0 published items), Publications (0 items).
+
+- **前端融合与动效 (Later on 2025-12-30)**:
+    - 集成 React 岛模式页面：`HomePage/PeoplePage/ProjectsPage/NewsPage/PublicationsPage/LibraryPage` 由 Astro 页面传入数据驱动。
+    - 背景与动效：引入 `three` + `@react-three/fiber` + `@react-three/drei`，新增 `src/components/react/RippleBackground.tsx`，在 `BaseLayout.astro` 以 `client:load` 挂载，使用 `public/background.jpg` 纹理。
+    - 依赖安装：为兼容 React 18 使用 r3f 8.x + drei 9.113.0，必要时用 `npm install --legacy-peer-deps`。
+    - 布局：`BaseLayout.astro` 注入 `Header/Footer` 及 Ripple 背景，内容层放在 z-index 之上。
+    - 本地图：将 UI 背景图放置 `public/background.jpg`，可替换即生效。
+
+- **Frontend Handoff (Step 6) - 2025-12-30**:
+    - **数据契约对齐**：
+        - 基于 `FRONTEND_GUIDELINES.md` 明确了所有 collections 的字段定义和路由规则。
+        - 确立了 WikiLinks 默认指向 Library (`/[lang]/library/...`) 的规则。
+        - 确认了附件统一通过 `/attachments/...` 访问的规则。
+    - **最小可用页面实现**：
+        - **Home 页面** (`/[lang]/index.astro`): 接入 News 和 Projects 数据，显示最新 5 条动态和 3 个精选项目。
+        - **People 页面**:
+            - 列表页 (`/[lang]/people/index.astro`): 按角色分组显示成员（教授、博士后、博士生、硕士生、校友等）。
+            - 详情页 (`/[lang]/people/[slug].astro`): 显示成员详细信息，包括头像、邮箱、链接、研究兴趣等。
+        - **Projects 页面**:
+            - 列表页 (`/[lang]/projects/index.astro`): 按开始时间排序显示所有项目，支持标签和参与人员显示。
+            - 详情页 (`/[lang]/projects/[slug].astro`): 显示项目详情，包括时间、参与人员（链接到 People）、标签、代码仓库等。
+        - **News 页面** (`/[lang]/news/index.astro`): 时间轴展示所有动态，显示日期、标签、相关内容，支持关联人员链接。
+        - **Library 页面**:
+            - 索引页 (`/[lang]/library/index.astro`): 使用 React 组件 `LibraryPage` 展示知识库内容卡片网格。
+            - 动态路由页 (`/[lang]/library/[...slug].astro`): 支持任意深度的路径渲染知识库内容。
+    - **技术要点**：
+        - 所有页面都使用 `getCollection()` API 从 Content Collections 获取数据。
+        - 支持中英双语路由（`/zh/` 和 `/en/`）。
+        - 数据过滤：只显示 `publish !== false` 的内容。
+        - 类型安全：利用 Astro Content Collections 的类型推断。
+        - 响应式设计：使用 Tailwind CSS 实现响应式布局。
+    - **Bug 修复**：
+        - 修复了 Library 页面在 frontmatter 中使用内联样式导致的语法错误，改为使用 React 组件渲染。
+        - 所有页面通过 lint 检查，无错误。
+    - **验证状态**：
+        - 所有页面已实现并通过前端同事验证。
+        - 数据契约与页面范围已对齐。
+        - 最小可用的页面联调已完成。

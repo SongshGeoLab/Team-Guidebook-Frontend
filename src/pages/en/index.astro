@@ -1,18 +1,25 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { HomePage } from '../../components/react/pages/HomePage';
 
-// Get recent news (latest 5, sorted by date)
 const allNews = await getCollection('news', ({ data }) => data.publish !== false);
-const recentNews = allNews
+const newsItems = allNews
   .sort((a, b) => {
     const dateA = a.data.date instanceof Date ? a.data.date : new Date(a.data.date);
     const dateB = b.data.date instanceof Date ? b.data.date : new Date(b.data.date);
     return dateB.getTime() - dateA.getTime();
   })
-  .slice(0, 5);
+  .slice(0, 5)
+  .map((item) => ({
+    id: item.id,
+    date: (item.data.date instanceof Date ? item.data.date : new Date(item.data.date)).toISOString(),
+    title: item.data.title || item.id,
+    content: item.data.content || '',
+    tags: item.data.tags || [],
+    related_people: item.data.related_people || []
+  }));
 
-// Get featured projects (latest 3, sorted by start_date)
 const allProjects = await getCollection('projects', ({ data }) => data.publish !== false);
 const featuredProjects = allProjects
   .sort((a, b) => {
@@ -20,88 +27,19 @@ const featuredProjects = allProjects
     const dateB = b.data.start_date instanceof Date ? b.data.start_date : new Date(b.data.start_date);
     return dateB.getTime() - dateA.getTime();
   })
-  .slice(0, 3);
+  .slice(0, 3)
+  .map((project) => ({
+    id: project.id,
+    title: project.data.title,
+    start_date: project.data.start_date instanceof Date ? project.data.start_date.toISOString().slice(0, 10) : project.data.start_date,
+    end_date: project.data.end_date instanceof Date ? project.data.end_date.toISOString().slice(0, 10) : project.data.end_date,
+    people: project.data.people || [],
+    tags: project.data.tags || [],
+    repo: project.data.repo,
+    detailUrl: `/en/projects/${project.id}`
+  }));
 ---
 
 <BaseLayout title="Lab Website" description="Welcome to our research lab" lang="en">
-  <div class="prose dark:prose-invert max-w-none">
-    <h1>Welcome to Our Lab</h1>
-    <p class="lead">
-      We are a research group focused on [Research Topic]. This site documents our projects, publications, and team members.
-    </p>
-    
-    <div class="grid md:grid-cols-2 gap-8 mt-12">
-      <div class="p-6 border rounded-lg dark:border-gray-700">
-        <h2 class="text-2xl font-bold mb-4">Latest News</h2>
-        {recentNews.length > 0 ? (
-          <ul class="space-y-3">
-            {recentNews.map((item) => {
-              const date = item.data.date instanceof Date ? item.data.date : new Date(item.data.date);
-              return (
-                <li key={item.id} class="border-l-2 border-blue-500 pl-3">
-                  <div class="text-sm text-gray-500 dark:text-gray-400">
-                    {date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                  </div>
-                  <div class="mt-1" set:html={item.data.content} />
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p class="text-gray-500 dark:text-gray-400">No news yet</p>
-        )}
-        {recentNews.length > 0 && (
-          <a href="/en/news" class="mt-4 inline-block text-blue-600 hover:underline text-sm">
-            View more news →
-          </a>
-        )}
-      </div>
-      
-      <div class="p-6 border rounded-lg dark:border-gray-700">
-        <h2 class="text-2xl font-bold mb-4">Featured Projects</h2>
-        {featuredProjects.length > 0 ? (
-          <ul class="space-y-3">
-            {featuredProjects.map((project) => {
-              const startDate = project.data.start_date instanceof Date 
-                ? project.data.start_date 
-                : new Date(project.data.start_date);
-              return (
-                <li key={project.id}>
-                  <a 
-                    href={`/en/projects/${project.id}`}
-                    class="text-blue-600 hover:underline font-medium"
-                  >
-                    {project.data.title}
-                  </a>
-                  <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {startDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
-                    {project.data.end_date 
-                      ? ` - ${(project.data.end_date instanceof Date ? project.data.end_date : new Date(project.data.end_date)).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}`
-                      : ' - Present'}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p class="text-gray-500 dark:text-gray-400">No projects yet</p>
-        )}
-        {featuredProjects.length > 0 && (
-          <a href="/en/projects" class="mt-4 inline-block text-blue-600 hover:underline text-sm">
-            View more projects →
-          </a>
-        )}
-      </div>
-    </div>
-    
-    <div class="mt-12 p-6 border rounded-lg dark:border-gray-700">
-      <h2 class="text-2xl font-bold mb-4">Quick Links</h2>
-      <ul class="space-y-2">
-        <li><a href="/en/projects" class="text-blue-600 hover:underline">Projects</a></li>
-        <li><a href="/en/publications" class="text-blue-600 hover:underline">Publications</a></li>
-        <li><a href="/en/people" class="text-blue-600 hover:underline">Team</a></li>
-        <li><a href="/en/library" class="text-blue-600 hover:underline">Library</a></li>
-      </ul>
-    </div>
-  </div>
+  <HomePage client:load lang="en" news={newsItems} projects={featuredProjects} />
 </BaseLayout>

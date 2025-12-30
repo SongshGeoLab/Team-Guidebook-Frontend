@@ -1,12 +1,22 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { PublicationsPage } from '../../../components/react/pages/PublicationsPage';
+
+const allPubs = await getCollection('publications', ({ data }) => data.publish !== false);
+const publications = allPubs.map((pub) => ({
+  id: pub.id,
+  title: pub.data.title || pub.id,
+  authors: pub.data.authors || [],
+  venue: pub.data.venue,
+  year: typeof pub.data.year === 'number' ? pub.data.year : Number(pub.data.year),
+  tags: pub.data.tags || [],
+  url: pub.data.pdf || pub.data.url,
+  bibtex: pub.data.bibtex
+}));
 ---
 
 <BaseLayout title="出版物" description="论文与出版物列表" lang="zh">
-  <div class="prose dark:prose-invert max-w-none">
-    <h1>出版物</h1>
-    <p class="lead">将从 BibTeX 与 Obsidian 文档中生成的出版物列表。</p>
-    <p class="text-sm text-gray-500 dark:text-gray-400">计划提供按年份与主题的筛选。</p>
-  </div>
+  <PublicationsPage client:load lang="zh" publications={publications} />
 </BaseLayout>
 

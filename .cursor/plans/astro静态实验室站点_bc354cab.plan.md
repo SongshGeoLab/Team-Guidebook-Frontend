@@ -28,7 +28,7 @@ todos:
       - i18n-routing
   - id: frontend-handoff
     content: 与前端同事对齐数据契约与页面范围：基于 `FRONTEND_GUIDELINES.md` 明确 collections 字段、路由、空态（/en）、WikiLinks 默认指向 Library、附件 `/attachments/` 访问规则；完成最小可用的页面联调（Home/News/People/Projects/Library）
-    status: pending
+    status: completed
     dependencies:
       - i18n-routing
       - content-collections

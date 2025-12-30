@@ -13,13 +13,29 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.6",
+    "@astrojs/react": "^4.2.0",
+    "@react-three/drei": "^9.113.0",
+    "@react-three/fiber": "^8.15.16",
     "@tailwindcss/vite": "^4.1.18",
     "astro": "^5.16.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.487.0",
+    "motion": "^11.11.15",
     "remark-directive": "^4.0.0",
     "remark-directive-rehype": "^0.4.2",
     "remark-wiki-link": "^2.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.5",
     "tailwindcss": "^4.1.18",
+    "three": "^0.168.0",
     "typescript": "^5.9.3",
     "unist-util-visit": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.12",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
   }
 }

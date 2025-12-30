@@ -1,18 +1,25 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { HomePage } from '../../components/react/pages/HomePage';
 
-// Get recent news (latest 5, sorted by date)
 const allNews = await getCollection('news', ({ data }) => data.publish !== false);
-const recentNews = allNews
+const newsItems = allNews
   .sort((a, b) => {
     const dateA = a.data.date instanceof Date ? a.data.date : new Date(a.data.date);
     const dateB = b.data.date instanceof Date ? b.data.date : new Date(b.data.date);
     return dateB.getTime() - dateA.getTime();
   })
-  .slice(0, 5);
+  .slice(0, 5)
+  .map((item) => ({
+    id: item.id,
+    date: (item.data.date instanceof Date ? item.data.date : new Date(item.data.date)).toISOString(),
+    title: item.data.title || item.id,
+    content: item.data.content || '',
+    tags: item.data.tags || [],
+    related_people: item.data.related_people || []
+  }));
 
-// Get featured projects (latest 3, sorted by start_date)
 const allProjects = await getCollection('projects', ({ data }) => data.publish !== false);
 const featuredProjects = allProjects
   .sort((a, b) => {
@@ -20,88 +27,19 @@ const featuredProjects = allProjects
     const dateB = b.data.start_date instanceof Date ? b.data.start_date : new Date(b.data.start_date);
     return dateB.getTime() - dateA.getTime();
   })
-  .slice(0, 3);
+  .slice(0, 3)
+  .map((project) => ({
+    id: project.id,
+    title: project.data.title,
+    start_date: project.data.start_date instanceof Date ? project.data.start_date.toISOString().slice(0, 10) : project.data.start_date,
+    end_date: project.data.end_date instanceof Date ? project.data.end_date.toISOString().slice(0, 10) : project.data.end_date,
+    people: project.data.people || [],
+    tags: project.data.tags || [],
+    repo: project.data.repo,
+    detailUrl: `/zh/projects/${project.id}`
+  }));
 ---
 
 <BaseLayout title="实验室主页" description="欢迎来到我们的研究实验室" lang="zh">
-  <div class="prose dark:prose-invert max-w-none">
-    <h1>欢迎来到我们的实验室</h1>
-    <p class="lead">
-      我们是一个专注于 [研究方向] 的研究小组。本网站记录了我们的项目、出版物和团队成员。
-    </p>
-    
-    <div class="grid md:grid-cols-2 gap-8 mt-12">
-      <div class="p-6 border rounded-lg dark:border-gray-700">
-        <h2 class="text-2xl font-bold mb-4">最新动态</h2>
-        {recentNews.length > 0 ? (
-          <ul class="space-y-3">
-            {recentNews.map((item) => {
-              const date = item.data.date instanceof Date ? item.data.date : new Date(item.data.date);
-              return (
-                <li key={item.id} class="border-l-2 border-blue-500 pl-3">
-                  <div class="text-sm text-gray-500 dark:text-gray-400">
-                    {date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
-                  </div>
-                  <div class="mt-1" set:html={item.data.content} />
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p class="text-gray-500 dark:text-gray-400">暂无动态</p>
-        )}
-        {recentNews.length > 0 && (
-          <a href="/zh/news" class="mt-4 inline-block text-blue-600 hover:underline text-sm">
-            查看更多动态 →
-          </a>
-        )}
-      </div>
-      
-      <div class="p-6 border rounded-lg dark:border-gray-700">
-        <h2 class="text-2xl font-bold mb-4">精选项目</h2>
-        {featuredProjects.length > 0 ? (
-          <ul class="space-y-3">
-            {featuredProjects.map((project) => {
-              const startDate = project.data.start_date instanceof Date 
-                ? project.data.start_date 
-                : new Date(project.data.start_date);
-              return (
-                <li key={project.id}>
-                  <a 
-                    href={`/zh/projects/${project.id}`}
-                    class="text-blue-600 hover:underline font-medium"
-                  >
-                    {project.data.title}
-                  </a>
-                  <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {startDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })}
-                    {project.data.end_date 
-                      ? ` - ${(project.data.end_date instanceof Date ? project.data.end_date : new Date(project.data.end_date)).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })}`
-                      : ' - 至今'}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p class="text-gray-500 dark:text-gray-400">暂无项目</p>
-        )}
-        {featuredProjects.length > 0 && (
-          <a href="/zh/projects" class="mt-4 inline-block text-blue-600 hover:underline text-sm">
-            查看更多项目 →
-          </a>
-        )}
-      </div>
-    </div>
-    
-    <div class="mt-12 p-6 border rounded-lg dark:border-gray-700">
-      <h2 class="text-2xl font-bold mb-4">快速链接</h2>
-      <ul class="space-y-2">
-        <li><a href="/zh/projects" class="text-blue-600 hover:underline">项目</a></li>
-        <li><a href="/zh/publications" class="text-blue-600 hover:underline">出版物</a></li>
-        <li><a href="/zh/people" class="text-blue-600 hover:underline">团队</a></li>
-        <li><a href="/zh/library" class="text-blue-600 hover:underline">图书馆</a></li>
-      </ul>
-    </div>
-  </div>
+  <HomePage client:load lang="zh" news={newsItems} projects={featuredProjects} />
 </BaseLayout>

@@ -6,8 +6,11 @@
 - Minimal runtime dependencies.
 
 ### Core
-- Framework: Astro 5+
-- Language: TypeScript
+- Framework: Astro 5+ (v5.16.6)
+- Language: TypeScript (v5.9.3)
+- React Integration: `@astrojs/react` (v4.2.0) - 用于 React 岛模式组件
+  - React (v18.3.1) + React DOM (v18.3.1)
+  - 类型支持: `@types/react` (v18.3.12), `@types/react-dom` (v18.3.1)
 
 ### Content Pipeline
 - Source: Obsidian-driven content (primary: `Team-Guidebook`), with a dual-mode sync strategy:
@@ -61,8 +64,24 @@
 
 ### UI
 - Styling: Tailwind CSS (v4 via `@tailwindcss/vite`)
-- Components: shadcn/ui (Radix UI) - *Planned*
-- Icons: Lucide
+- Components: 
+  - **React Islands**: 使用 Astro 的 React 集成 (`@astrojs/react` v4.2.0) 实现岛模式架构。
+    - 页面级组件位于 `src/components/react/pages/`，使用 `client:load` 指令挂载。
+    - UI 组件位于 `src/components/react/ui/`，可复用。
+  - shadcn/ui (Radix UI) - *Planned*
+- Icons: `lucide-react` (v0.487.0) - React 图标库
+- Motion/动画: 
+  - `motion` (v11.11.15) - 交互动效库（原 framer-motion 的后续版本）
+  - CSS 过渡和 Tailwind 动画类
+- 背景/3D: 
+  - `three` (v0.168.0) - WebGL 3D 库
+  - `@react-three/fiber` (v8.15.16) - React Three.js 渲染器
+  - `@react-three/drei` (v9.113.0) - Three.js React 工具库
+  - 用于水波背景 (`RippleBackground.tsx`)，纹理位于 `public/background.jpg`
+- 工具库:
+  - `clsx` (v2.1.1) - 条件类名工具
+  - `tailwind-merge` (v2.5.5) - Tailwind 类名合并工具
+  - `class-variance-authority` (v0.7.1) - 变体类名管理
 
 ### Search
 - Pagefind (static full-text search)
@@ -80,3 +99,4 @@
 - Attachment sync: Automatically syncs `Team-Guidebook/assets/` and `Team-Guidebook/图片库/` to `public/attachments/` during `predev` and `prebuild` phases.
   - Handles filename collisions with warnings.
   - Supports recursive directory copying.
+- 依赖安装注意：r3f 与 React 18 需使用 `@react-three/fiber@^8`，必要时用 `npm install --legacy-peer-deps` 以避免 peer 冲突。
