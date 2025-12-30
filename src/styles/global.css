@@ -1,1 +1,145 @@
 @import "tailwindcss";
+
+/* Obsidian Callouts Styles */
+.admonition {
+  @apply my-4 rounded-lg border-l-4 p-4;
+  @apply bg-gray-50 dark:bg-gray-800;
+}
+
+.admonition-title {
+  @apply font-semibold mb-2 text-sm uppercase tracking-wide;
+}
+
+.admonition-note {
+  @apply border-blue-500 bg-blue-50 dark:bg-blue-900/20;
+}
+
+.admonition-note .admonition-title {
+  @apply text-blue-700 dark:text-blue-300;
+}
+
+.admonition-abstract,
+.admonition-summary {
+  @apply border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20;
+}
+
+.admonition-abstract .admonition-title,
+.admonition-summary .admonition-title {
+  @apply text-cyan-700 dark:text-cyan-300;
+}
+
+.admonition-info {
+  @apply border-blue-500 bg-blue-50 dark:bg-blue-900/20;
+}
+
+.admonition-info .admonition-title {
+  @apply text-blue-700 dark:text-blue-300;
+}
+
+.admonition-tip,
+.admonition-hint {
+  @apply border-green-500 bg-green-50 dark:bg-green-900/20;
+}
+
+.admonition-tip .admonition-title,
+.admonition-hint .admonition-title {
+  @apply text-green-700 dark:text-green-300;
+}
+
+.admonition-success,
+.admonition-check,
+.admonition-done {
+  @apply border-green-500 bg-green-50 dark:bg-green-900/20;
+}
+
+.admonition-success .admonition-title,
+.admonition-check .admonition-title,
+.admonition-done .admonition-title {
+  @apply text-green-700 dark:text-green-300;
+}
+
+.admonition-question,
+.admonition-help,
+.admonition-faq {
+  @apply border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20;
+}
+
+.admonition-question .admonition-title,
+.admonition-help .admonition-title,
+.admonition-faq .admonition-title {
+  @apply text-yellow-700 dark:text-yellow-300;
+}
+
+.admonition-warning,
+.admonition-caution,
+.admonition-attention {
+  @apply border-orange-500 bg-orange-50 dark:bg-orange-900/20;
+}
+
+.admonition-warning .admonition-title,
+.admonition-caution .admonition-title,
+.admonition-attention .admonition-title {
+  @apply text-orange-700 dark:text-orange-300;
+}
+
+.admonition-failure,
+.admonition-fail,
+.admonition-missing {
+  @apply border-red-500 bg-red-50 dark:bg-red-900/20;
+}
+
+.admonition-failure .admonition-title,
+.admonition-fail .admonition-title,
+.admonition-missing .admonition-title {
+  @apply text-red-700 dark:text-red-300;
+}
+
+.admonition-danger,
+.admonition-error {
+  @apply border-red-600 bg-red-50 dark:bg-red-900/20;
+}
+
+.admonition-danger .admonition-title,
+.admonition-error .admonition-title {
+  @apply text-red-800 dark:text-red-300;
+}
+
+.admonition-bug {
+  @apply border-purple-500 bg-purple-50 dark:bg-purple-900/20;
+}
+
+.admonition-bug .admonition-title {
+  @apply text-purple-700 dark:text-purple-300;
+}
+
+.admonition-example {
+  @apply border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20;
+}
+
+.admonition-example .admonition-title {
+  @apply text-indigo-700 dark:text-indigo-300;
+}
+
+.admonition-quote,
+.admonition-cite {
+  @apply border-gray-400 bg-gray-50 dark:bg-gray-800;
+}
+
+.admonition-quote .admonition-title,
+.admonition-cite .admonition-title {
+  @apply text-gray-700 dark:text-gray-300;
+}
+
+/* Internal links (WikiLinks) */
+.internal-link {
+  @apply text-blue-600 dark:text-blue-400 underline decoration-dotted;
+}
+
+.internal-link:hover {
+  @apply text-blue-800 dark:text-blue-300;
+}
+
+/* Obsidian images */
+.obsidian-image {
+  @apply rounded-lg shadow-sm;
+}

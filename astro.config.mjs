@@ -2,6 +2,11 @@
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import wikiLink from 'remark-wiki-link';
+import remarkDirective from 'remark-directive';
+import remarkDirectiveRehype from 'remark-directive-rehype';
+import remarkObsidianImage from './src/utils/remark-obsidian-image.js';
+import remarkObsidianCallouts from './src/utils/remark-obsidian-callouts.js';
+import rehypeCallouts from './src/utils/rehype-callouts.js';
 
 /**
  * Wrap remark-wiki-link to inject locale awareness from the Markdown file.
@@ -64,7 +69,14 @@ export default defineConfig({
   },
   markdown: {
     remarkPlugins: [
-      wikiLinkWithLocale()
+      remarkObsidianCallouts, // Transform Obsidian callouts (> [!INFO]) to directives
+      remarkDirective, // Parse directives (:::info[...]:::) 
+      remarkObsidianImage, // Transform ![[image.png]] to ![](/attachments/image.png)
+      wikiLinkWithLocale() // Transform [[links]] to /[lang]/library/...
+    ],
+    rehypePlugins: [
+      remarkDirectiveRehype, // Convert remark directives to rehype nodes
+      rehypeCallouts // Transform callout directives to styled HTML
     ]
   }
 });

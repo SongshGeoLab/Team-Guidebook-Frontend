@@ -128,16 +128,67 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - Astro configuration file.
   - **Integrations**: Configures Tailwind CSS via `@tailwindcss/vite` plugin.
   - **Redirects**: Static redirect configuration (`redirects: { '/': '/zh/' }`) for root path redirection (compatible with static output mode).
-  - **Markdown Processing**: Configures `remark-wiki-link` for Obsidian WikiLink compatibility.
-    - **`wikiLinkWithLocale()`**: Higher-order function that wraps `remark-wiki-link` to inject locale awareness.
-      - **Language Inference**: Tries in order: 1) frontmatter `lang`, 2) file path containing `/en/` or `/zh/`, 3) defaults to `zh`.
-      - **`hrefTemplate` Function**: Maps WikiLink permalinks to URL paths:
-        - Normalizes segments to kebab-case (spaces/underscores → hyphens, lowercase).
-        - Supports explicit language prefixes: `[[en/Page]]` → `/en/library/page`, `[[zh/Page]]` → `/zh/library/page`.
-        - Default behavior: `[[Page]]` → `/<inferred-lang>/library/page`.
-        - Preserves absolute paths (starting with `/`) unchanged.
-      - **Styling Contract**: Sets `wikiLinkClassName: 'internal-link'` to match frontend expectations (see `FRONTEND_GUIDELINES.md`).
-      - **Alias Support**: Handles `[[Page|Display Text]]` via `aliasDivider: '|'`.
+  - **Markdown Processing Pipeline**: Configured with multiple remark/rehype plugins for Obsidian syntax support:
+    - **Remark Plugins (executed in order)**:
+      1. **`remarkObsidianCallouts`** (`src/utils/remark-obsidian-callouts.js`): Transforms Obsidian callout syntax `> [!INFO] Title` into directive format `:::info[Title]`.
+      2. **`remarkDirective`**: Parses directive syntax (`:::type[title]...:::`).
+      3. **`remarkObsidianImage`** (`src/utils/remark-obsidian-image.js`): Transforms `![[image.png]]` to standard Markdown image syntax `![](/attachments/image.png)`.
+      4. **`wikiLinkWithLocale()`**: Higher-order function that wraps `remark-wiki-link` to inject locale awareness.
+         - **Language Inference**: Tries in order: 1) frontmatter `lang`, 2) file path containing `/en/` or `/zh/`, 3) defaults to `zh`.
+         - **`hrefTemplate` Function**: Maps WikiLink permalinks to URL paths:
+           - Normalizes segments to kebab-case (spaces/underscores → hyphens, lowercase).
+           - Supports explicit language prefixes: `[[en/Page]]` → `/en/library/page`, `[[zh/Page]]` → `/zh/library/page`.
+           - Default behavior: `[[Page]]` → `/<inferred-lang>/library/page`.
+           - Preserves absolute paths (starting with `/`) unchanged.
+         - **Styling Contract**: Sets `wikiLinkClassName: 'internal-link'` to match frontend expectations (see `FRONTEND_GUIDELINES.md`).
+         - **Alias Support**: Handles `[[Page|Display Text]]` via `aliasDivider: '|'`.
+    - **Rehype Plugins (executed in order)**:
+      1. **`remarkDirectiveRehype`**: Converts remark directive nodes to rehype HTML nodes.
+      2. **`rehypeCallouts`** (`src/utils/rehype-callouts.js`): Transforms directive nodes into styled HTML `<aside>` elements with CSS classes.
+
+- **`src/utils/remark-obsidian-callouts.js`**:
+  - **Purpose**: Converts Obsidian callout syntax to remark directive format.
+  - **Input**: Markdown with Obsidian callouts: `> [!INFO] Title\n> Content`
+  - **Output**: Remark directive nodes: `:::info[Title]...:::`
+  - **Logic**: Visits `blockquote` nodes, detects `[!TYPE]` pattern in first paragraph, extracts callout type and title, converts remaining content to directive children.
+  - **Supported Types**: note, abstract, info, tip, success, question, warning, failure, danger, bug, example, quote (case-insensitive).
+
+- **`src/utils/rehype-callouts.js`**:
+  - **Purpose**: Transforms directive nodes (from `remark-directive-rehype`) into styled HTML callout elements.
+  - **Input**: Rehype nodes with `dataName` property (from directive conversion).
+  - **Output**: HTML `<aside>` elements with classes `admonition admonition-{type}` and `data-callout` attribute.
+  - **Structure**: Creates title paragraph (if exists) + content children.
+  - **Styling**: CSS classes are defined in `src/styles/global.css` for each callout type.
+
+- **`src/utils/remark-obsidian-image.js`**:
+  - **Purpose**: Transforms Obsidian image embed syntax to standard Markdown images.
+  - **Input**: Markdown text nodes containing `![[image.png]]` or `![[path/to/image.png]]`.
+  - **Output**: Standard Markdown image nodes pointing to `/attachments/...`.
+  - **Logic**: Visits text nodes, matches `![[...]]` pattern, extracts image path, normalizes path (removes leading/trailing slashes), creates image node with `/attachments/` prefix.
+  - **Path Handling**: Supports nested paths, normalizes to kebab-case segments.
+  - **CSS Class**: Adds `obsidian-image` class to generated image nodes for styling.
+
+- **`scripts/setup-content.mjs`**:
+  - **Purpose**: Prepares content directory and syncs attachments before dev/build.
+  - **Content Sync**: Handles three modes:
+    1. `CONTENT_DIR` environment variable → symlink to `.content/`
+    2. `CONTENT_REPO_URL` → git clone to `.content/`
+    3. Fallback → use local `Team-Guidebook/`
+  - **Attachment Sync** (`syncAttachments()` function):
+    - Syncs `Team-Guidebook/assets/` and `Team-Guidebook/图片库/` to `public/attachments/`.
+    - Recursively copies directories and files.
+    - Detects filename collisions and warns (doesn't overwrite).
+    - Handles both symlink and direct directory scenarios.
+  - **Execution**: Wired via `predev` and `prebuild` npm scripts.
+
+- **`src/styles/global.css`**:
+  - **Purpose**: Global styles for the site, including Obsidian syntax support.
+  - **Callout Styles**: Comprehensive styles for all Obsidian callout types:
+    - Each type has color-coded border and background (e.g., `admonition-info` has blue border, `admonition-warning` has orange border).
+    - Title styling with uppercase, tracking, and type-specific colors.
+    - Dark mode support via Tailwind's `dark:` prefix.
+  - **Internal Links**: `.internal-link` class for WikiLinks (dotted underline, blue color, hover effects).
+  - **Obsidian Images**: `.obsidian-image` class (rounded corners, shadow).
 
 ### 8) Backend Data Pipeline Specification
 
@@ -189,16 +240,31 @@ Since source content comes from non-standard structures (Daily Notes, BibTeX), c
     - Phase 2 introduces BibTeX (`.bib`) + `citation-js` for structured filtering page.
 
 #### Markdown Processing Pipeline (`astro.config.mjs`)
-To support Obsidian-specific syntax, the remark/rehype pipeline must be configured:
+To support Obsidian-specific syntax, the remark/rehype pipeline is configured with the following plugins (executed in order):
 
+**Remark Phase (Markdown AST transformation)**:
+1. **`remarkObsidianCallouts`**: Converts `> [!INFO] Title` → `:::info[Title]`
+2. **`remarkDirective`**: Parses directive syntax
+3. **`remarkObsidianImage`**: Converts `![[image.png]]` → `![](/attachments/image.png)`
+4. **`wikiLinkWithLocale()`**: Converts `[[link]]` → `/<lang>/library/...`
+
+**Rehype Phase (HTML AST transformation)**:
+1. **`remarkDirectiveRehype`**: Converts directive nodes to HTML nodes
+2. **`rehypeCallouts`**: Transforms directives to styled `<aside>` elements
+
+**Details**:
 - **WikiLinks (`[[...]]`)**:
-  - Use `remark-wiki-link`.
   - **Resolution**: Map `[[...]]` to `/[lang]/library/...` with disambiguation rules (path-like preferred).
   - **Styling**: Add class `.internal-link` for frontend styling.
+  - **Language Awareness**: Infers locale from file path or frontmatter.
 - **Callouts (`> [!info]`)**:
-  - Use `remark-gh-admonitions` or `remark-directive` to transform into semantic HTML `<aside>` or `<div>` with classes (e.g., `.admonition.info`).
+  - **Transformation**: `> [!INFO] Title` → `:::info[Title]` → `<aside class="admonition admonition-info">`
+  - **Supported Types**: note, abstract, info, tip, success, question, warning, failure, danger, bug, example, quote
+  - **Styling**: Each type has color-coded CSS classes defined in `src/styles/global.css`.
 - **Assets (`![[...]]`)**:
-  - Transform Obsidian embed syntax into standard Markdown image syntax `![](/attachments/...)`.
+  - **Transformation**: `![[image.png]]` → `![](/attachments/image.png)`
+  - **Path Resolution**: Images are synced from `Team-Guidebook/assets/` and `Team-Guidebook/图片库/` to `public/attachments/` during build/dev.
+  - **CSS Class**: Generated images have `obsidian-image` class for styling.
 
 ### 9) Comments Policy (Recommended Default)
 

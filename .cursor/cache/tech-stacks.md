@@ -23,13 +23,28 @@
   - Astro Content Collections (Zod schema validation + type generation)
   - `citation-js` (BibTeX -> JSON + formatted citations)
   - Obsidian markdown extensions (WikiLinks, Callouts, `![[...]]` attachments) via remark/rehype
-    - **`remark-wiki-link`**: Configured in `astro.config.mjs` to parse `[[WikiLinks]]`.
+    - **`remark-wiki-link`** (v2.0.1): Configured in `astro.config.mjs` to parse `[[WikiLinks]]`.
       - **Locale-Aware Resolution**: Wrapped in `wikiLinkWithLocale()` to infer language from file path or frontmatter.
       - **URL Normalization**: Converts WikiLink targets to kebab-case (spaces/underscores → hyphens, lowercase).
       - **Path Mapping**: Defaults to `/<lang>/library/...` but supports explicit language prefixes (`[[en/Page]]`, `[[zh/Page]]`).
       - **Styling**: Generates links with `internal-link` class for frontend styling (see `FRONTEND_GUIDELINES.md`).
       - **Alias Support**: Handles `[[Page|Display Text]]` syntax.
-    - **`remark-gh-admonitions`** (or similar): For Obsidian Callouts.
+    - **`remark-directive`** (v4.0.0): Parses directive syntax (`:::type[title]...:::`).
+      - Used as intermediate format for Obsidian callouts.
+    - **`remark-directive-rehype`** (v0.4.2): Converts remark directive nodes to rehype HTML nodes.
+      - Bridges the gap between remark (Markdown AST) and rehype (HTML AST).
+    - **Custom Plugins**:
+      - **`remark-obsidian-callouts`** (`src/utils/remark-obsidian-callouts.js`): Transforms Obsidian callout syntax `> [!INFO] Title` to directive format.
+        - Visits blockquote nodes, detects `[!TYPE]` pattern, extracts type and title.
+        - Supports all Obsidian callout types (case-insensitive).
+      - **`remark-obsidian-image`** (`src/utils/remark-obsidian-image.js`): Transforms `![[image.png]]` to standard Markdown images.
+        - Visits text nodes, matches `![[...]]` pattern, converts to image nodes with `/attachments/` prefix.
+        - Handles nested paths and path normalization.
+      - **`rehype-callouts`** (`src/utils/rehype-callouts.js`): Transforms directive nodes to styled HTML callouts.
+        - Creates `<aside>` elements with `admonition` classes.
+        - Generates title paragraphs and content structure.
+    - **`unist-util-visit`** (v5.0.0): Utility for traversing and transforming AST nodes.
+      - Used by all custom remark/rehype plugins.
 
 ### UI
 - Styling: Tailwind CSS (v4 via `@tailwindcss/vite`)
@@ -49,3 +64,6 @@
 - Output: pure static HTML (`output: "static"`)
 - Hosting: GitHub Pages (default), compatible with any static host.
 - Content sync: `scripts/setup-content.mjs` prepares `.content/` via `CONTENT_DIR` (symlink) or `CONTENT_REPO_URL`/`CONTENT_REPO_REF` (clone), fallback to local `Team-Guidebook/`.
+- Attachment sync: Automatically syncs `Team-Guidebook/assets/` and `Team-Guidebook/图片库/` to `public/attachments/` during `predev` and `prebuild` phases.
+  - Handles filename collisions with warnings.
+  - Supports recursive directory copying.

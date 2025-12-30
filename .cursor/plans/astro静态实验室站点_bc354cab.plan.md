@@ -17,7 +17,7 @@ todos:
       - scaffold-astro
   - id: obsidian-integration
     content: 配置 Markdown 解析器以支持 Obsidian 语法：WikiLinks (`[[link]]`) 转标准链接、Callouts/Admonitions 样式、以及相对路径图片解析
-    status: pending
+    status: completed
     dependencies:
       - content-sync-strategy
   - id: content-collections
@@ -90,6 +90,8 @@ flowchart TD
   astroBuild --> dist[静态产物]
 ```
 
+
+
 ## 内容仓库结构建议（适配 Obsidian）
 
 建议以 **Direct Map** 方式复用你现有的 `Team-Guidebook/` 目录结构（不强制迁移到 `lab/zh/en`）。站点栏目是“视图/聚合”，内容仍按 Obsidian 的目录维护：
@@ -155,4 +157,3 @@ flowchart TD
 
 1.  **Obsidian 友好**：你在 Obsidian 里修改一个 Markdown 文件，保存后，本地运行的 Astro 页面能立刻热更新显示内容。
 2.  **图片正常**：Obsidian 里粘贴的图片（存放在 attachments 下），在网页中能正常加载，且无需手动修改路径。
-3.  **链接正常**：Obsidian 里的双链 `[[...]]` 在网页上能正确跳转；附件嵌入 `![[...]] `能正确解析到 `/attachments/...`。

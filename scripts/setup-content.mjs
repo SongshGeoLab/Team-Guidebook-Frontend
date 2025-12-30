@@ -83,16 +83,76 @@ const cloneSource = () => {
   log(`Cloned ${repoUrl} @ ${repoRef} into ${dest}`);
 };
 
+const syncAttachments = (contentRoot) => {
+  const attachmentsDir = path.resolve(cwd, 'public', 'attachments');
+  // contentRoot could be .content (symlink/clone) or Team-Guidebook (fallback)
+  // In both cases, Team-Guidebook should be at contentRoot/Team-Guidebook or contentRoot itself
+  let teamGuidebookPath = contentRoot;
+  if (path.basename(contentRoot) !== 'Team-Guidebook') {
+    teamGuidebookPath = path.resolve(contentRoot, 'Team-Guidebook');
+  }
+  const sourceAssets = path.resolve(teamGuidebookPath, 'assets');
+  const sourceImages = path.resolve(teamGuidebookPath, '图片库');
+
+  // Create public/attachments if it doesn't exist
+  if (!exists(attachmentsDir)) {
+    fs.mkdirSync(attachmentsDir, { recursive: true });
+  }
+
+  const copyDir = (src, destBase) => {
+    if (!exists(src)) {
+      log(`Source directory ${src} not found, skipping...`);
+      return;
+    }
+
+    const items = fs.readdirSync(src, { withFileTypes: true });
+    for (const item of items) {
+      const srcPath = path.join(src, item.name);
+      const destPath = path.join(destBase, item.name);
+
+      if (item.isDirectory()) {
+        if (!exists(destPath)) {
+          fs.mkdirSync(destPath, { recursive: true });
+        }
+        copyDir(srcPath, destPath);
+      } else {
+        // Check for name collisions
+        if (exists(destPath)) {
+          log(`Warning: File ${item.name} already exists in attachments, skipping ${srcPath}`);
+          continue;
+        }
+        fs.copyFileSync(srcPath, destPath);
+        log(`Copied ${item.name} to attachments`);
+      }
+    }
+  };
+
+  log('Syncing attachments from content source...');
+  copyDir(sourceAssets, attachmentsDir);
+  copyDir(sourceImages, attachmentsDir);
+  log('Attachments sync completed');
+};
+
 const main = () => {
   const source = resolveSource();
 
   if (source) {
     linkSource(source);
+    // After linking, attachments should be read from .content (which points to source)
+    syncAttachments(dest);
     return;
   }
 
   if (repoUrl) {
     cloneSource();
+    syncAttachments(dest);
+    return;
+  }
+
+  // Fallback: use local Team-Guidebook if it exists
+  if (exists(fallback)) {
+    log(`Using fallback content source: ${fallback}`);
+    syncAttachments(fallback);
     return;
   }
 

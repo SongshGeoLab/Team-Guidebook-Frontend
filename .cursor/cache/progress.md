@@ -29,3 +29,33 @@
         - Fallback to local `Team-Guidebook/`
     - Wired `predev`/`prebuild` and `setup:content` scripts to prepare `.content/` before dev/build.
     - Implemented `Header.astro`: URL-based locale detection, `/zh` ⇄ `/en` switch, 7 main nav links (Home/News/Projects/Library/Publications/People/About).
+
+- **Obsidian Syntax Integration (Step 4)**:
+    - **Callouts Support**:
+        - Installed `remark-directive` and `remark-directive-rehype` for directive processing.
+        - Created `src/utils/remark-obsidian-callouts.js`: Transforms Obsidian callout syntax `> [!INFO] Title` to directive format `:::info[Title]`.
+        - Created `src/utils/rehype-callouts.js`: Transforms directive nodes to styled HTML `<aside>` elements with CSS classes.
+        - Added comprehensive callout styles in `src/styles/global.css` supporting all Obsidian callout types (note, info, warning, danger, tip, success, question, failure, bug, example, quote).
+    - **Image Embed Support**:
+        - Created `src/utils/remark-obsidian-image.js`: Transforms `![[image.png]]` syntax to standard Markdown `![](/attachments/image.png)`.
+        - Handles nested paths: `![[path/to/image.png]]` → `![](/attachments/path/to/image.png)`.
+        - Added image collision detection and warnings in attachment sync.
+    - **Attachment Sync**:
+        - Enhanced `scripts/setup-content.mjs` with `syncAttachments()` function:
+            - Automatically syncs `Team-Guidebook/assets/` and `Team-Guidebook/图片库/` to `public/attachments/`.
+            - Handles both symlink and clone scenarios.
+            - Detects and warns about filename collisions.
+        - Attachments are synced during `predev` and `prebuild` phases.
+    - **Plugin Configuration**:
+        - Updated `astro.config.mjs` with proper plugin order:
+            1. `remarkObsidianCallouts` - Convert Obsidian callouts to directives
+            2. `remarkDirective` - Parse directive syntax
+            3. `remarkObsidianImage` - Convert image embeds
+            4. `wikiLinkWithLocale()` - Convert WikiLinks
+            5. `remarkDirectiveRehype` (rehype) - Convert directives to HTML nodes
+            6. `rehypeCallouts` (rehype) - Render callouts as styled HTML
+        - All plugins properly integrated into Astro's markdown processing pipeline.
+    - **Styling**:
+        - Added `.internal-link` class styles for WikiLinks (dotted underline, blue color).
+        - Added `.obsidian-image` class for embedded images (rounded corners, shadow).
+        - Comprehensive callout styles with color-coded borders and backgrounds for each type.
