@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: i18n-routing
     content: 实现 locale 前缀路由与语言切换（/zh 与 /en）以及 7 个栏目基础页面
-    status: pending
+    status: completed
     dependencies:
       - scaffold-astro
   - id: content-sync-strategy

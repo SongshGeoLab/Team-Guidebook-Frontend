@@ -96,28 +96,47 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - Accepts `title`, `description`, and `lang` props for SEO and accessibility.
 
 - **`src/components/Header.astro`**:
-  - Top navigation bar.
-  - Contains site branding (Logo/Title) and main navigation links.
-  - Handles language switching logic (linking to `/zh` or `/en`).
+  - Top navigation bar component.
+  - **Language Detection**: Infers current locale from `Astro.url.pathname` (checks for `/en/` or `/zh/` prefix).
+  - **Language Switching**: Provides links to toggle between `/zh/` and `/en/` versions of the current page.
+  - **Navigation**: Contains 7 main section links: Home, News, Projects, Library, Publications, People, About.
+  - **Responsive**: Designed to work across different screen sizes (mobile-friendly navigation).
 
 - **`src/components/Footer.astro`**:
   - Page footer.
   - Contains copyright info and secondary links.
 
-- **`src/pages/index.astro`**:
-  - **Role**: Root Redirector.
-  - **Behavior**: Immediately redirects users to the default language path (`/zh/`).
-  - **SEO**: Can be enhanced with language detection logic in the future.
+- **Root Redirect**:
+  - **Implementation**: Configured in `astro.config.mjs` via `redirects: { '/': '/zh/' }`.
+  - **Behavior**: Automatically redirects root path (`/`) to default language (`/zh/`).
+  - **Rationale**: Uses Astro's static redirect feature instead of SSR-only `Astro.redirect()` to maintain compatibility with static output mode.
+  - **Note**: No `src/pages/index.astro` file exists to avoid build conflicts with redirect configuration.
 
 - **`src/pages/[lang]/index.astro`**:
   - **Role**: Localized Landing Pages (`/zh/` and `/en/`).
   - **Content**: Contains the actual homepage content (Welcome message, News highlights, Quick links) tailored to the specific language.
+  - **Structure**: Uses `BaseLayout` with appropriate `lang` prop for SEO and accessibility.
+
+- **Section Placeholder Pages**:
+  - **Location**: `src/pages/[lang]/{news,projects,library,publications,people,about}/index.astro` (or `about.astro` for About).
+  - **Purpose**: Provide routing structure for all 7 main sections in both languages.
+  - **Current State**: Display "Coming soon" or empty state messages until Content Collections are implemented.
+  - **Future**: Will be populated with actual content from Obsidian vault via Content Collections.
 
 - **`astro.config.mjs`**:
   - Astro configuration file.
-  - **Integrations**: Configures Tailwind CSS.
-  - **Markdown**: Configures `remark-wiki-link` for Obsidian compatibility.
-    - `hrefTemplate`: Controls how `[[WikiLinks]]` are resolved to URL paths.
+  - **Integrations**: Configures Tailwind CSS via `@tailwindcss/vite` plugin.
+  - **Redirects**: Static redirect configuration (`redirects: { '/': '/zh/' }`) for root path redirection (compatible with static output mode).
+  - **Markdown Processing**: Configures `remark-wiki-link` for Obsidian WikiLink compatibility.
+    - **`wikiLinkWithLocale()`**: Higher-order function that wraps `remark-wiki-link` to inject locale awareness.
+      - **Language Inference**: Tries in order: 1) frontmatter `lang`, 2) file path containing `/en/` or `/zh/`, 3) defaults to `zh`.
+      - **`hrefTemplate` Function**: Maps WikiLink permalinks to URL paths:
+        - Normalizes segments to kebab-case (spaces/underscores → hyphens, lowercase).
+        - Supports explicit language prefixes: `[[en/Page]]` → `/en/library/page`, `[[zh/Page]]` → `/zh/library/page`.
+        - Default behavior: `[[Page]]` → `/<inferred-lang>/library/page`.
+        - Preserves absolute paths (starting with `/`) unchanged.
+      - **Styling Contract**: Sets `wikiLinkClassName: 'internal-link'` to match frontend expectations (see `FRONTEND_GUIDELINES.md`).
+      - **Alias Support**: Handles `[[Page|Display Text]]` via `aliasDivider: '|'`.
 
 ### 8) Backend Data Pipeline Specification
 
