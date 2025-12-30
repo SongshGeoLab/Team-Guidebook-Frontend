@@ -1,0 +1,158 @@
+---
+name: Astro静态实验室站点
+overview: 在本仓库中搭建 Astro 5 + TypeScript + Tailwind 的静态实验室主页框架。核心基于 **Obsidian 工作流**：本地开发时直接挂载/链接 Obsidian 仓库，CI 构建时从远端拉取。通过 Content Collections 驱动 Home/News/Projects/Library/Publications/People/About，支持 .bib 论文库、中英双语路由及 Obsidian 特有的 Markdown 语法（WikiLinks、Callouts 等）。
+todos:
+  - id: scaffold-astro
+    content: 初始化 Astro 5 + TypeScript + Tailwind 项目骨架，并建立 layouts/components/pages 基础结构
+    status: pending
+  - id: i18n-routing
+    content: 实现 locale 前缀路由与语言切换（/zh 与 /en）以及 7 个栏目基础页面
+    status: pending
+    dependencies:
+      - scaffold-astro
+  - id: content-sync-strategy
+    content: 实现“双模”内容加载策略：开发环境支持本地路径（软链/复制 Obsidian 仓库），CI 环境支持 Git Clone 远端仓库
+    status: pending
+    dependencies:
+      - scaffold-astro
+  - id: obsidian-integration
+    content: 配置 Markdown 解析器以支持 Obsidian 语法：WikiLinks (`[[link]]`) 转标准链接、Callouts/Admonitions 样式、以及相对路径图片解析
+    status: pending
+    dependencies:
+      - content-sync-strategy
+  - id: content-collections
+    content: 建立 `src/content/config.ts`：定义 news/people/projects/library/publications 的 Zod schema，并确立与 Obsidian Frontmatter 的映射规范
+    status: pending
+    dependencies:
+      - obsidian-integration
+      - i18n-routing
+  - id: daily-notes-news
+    content: "实现 News 数据源：扫描 `Team-Guidebook/档案馆/YYYY-MM-DD.md`（日记），按 `publish: true` 且非 `draft` 过滤；从 bullet 行抽取 news 条目，并解析 `#P/<Name>` 通过 People `aliases` 映射关联人"
+    status: pending
+    dependencies:
+      - content-collections
+  - id: publications-bib
+    content: 接入 `citation-js`：解析 `.bib` 生成 Publications 列表与筛选，并支持内容引用 bib key
+    status: pending
+    dependencies:
+      - content-collections
+  - id: library-render
+    content: 实现 Library 文档站渲染：保留 Obsidian 目录树结构作为侧边栏导航，处理 Markdown 内的静态资源引用
+    status: pending
+    dependencies:
+      - content-collections
+  - id: comments
+    content: 集成 GitHub 评论（优先 giscus，可替换 utterances）并嵌入到内容页
+    status: pending
+    dependencies:
+      - i18n-routing
+  - id: search-pagefind
+    content: 接入 Pagefind：构建后索引 + 搜索页/搜索框
+    status: pending
+    dependencies:
+      - i18n-routing
+      - content-collections
+  - id: ci-gh-pages
+    content: 配置 GitHub Actions：拉取内容仓库 -> build -> pagefind -> 部署到 GitHub Pages
+    status: pending
+    dependencies:
+      - content-sync-strategy
+      - search-pagefind
+---
+
+# Astro 静态实验室主页：实现步骤设计（Obsidian 驱动版）
+
+## 目标与核心调整
+
+- **核心驱动**：**Obsidian** 作为 CMS（内容管理系统）。
+- **关键调整**：
+
+    1.  **开发模式**：不再强制先 fetch，而是支持指向本地文件夹（软链），实现“Obsidian 编辑 -> 浏览器即时预览”。
+    2.  **语法兼容**：必须处理 Obsidian 特有的 WikiLinks (`[[Link]]`) 和相对路径图片/附件。
+    3.  **内容主导**：代码仓库定义 Schema（规范），内容仓库（Obsidian）负责对其。如果需要，代码侧提供脚本帮助格式化 YAML。
+
+## 关键架构（本地开发 + CI 双模）
+
+```mermaid
+flowchart TD
+  obsidian[本地 Obsidian 仓库] -.->|Symlink/Copy| devContent[项目内容目录]
+  devContent --> astroDev[Astro Dev Server]
+  astroDev --> browser[浏览器预览]
+  
+  remoteRepo[远端 GitHub 内容仓库] -->|Git Clone| ciContent[CI 构建目录]
+  ciContent --> astroBuild[Astro Build]
+  astroBuild --> dist[静态产物]
+```
+
+
+
+## 内容仓库结构建议（适配 Obsidian）
+
+建议在你的 Obsidian 仓库根目录下建立一套“网站导出结构”。其中 News 复用 Obsidian 核心插件“日记”，不单独维护 `lab/news`，结构如下：
+
+- `lab/` (主要内容区，按语言分根目录)
+- `zh/`
+    - `people/`: 成员介绍（frontmatter 含 `id`/`aliases` 用于解析 `#P/`）
+    - `projects/`: 项目介绍
+    - `publications/`: 包含 `publications.bib` 与可选 `highlights/`
+- `en/`
+    - `people/`
+    - `projects/`
+    - `publications/`
+- `Team-Guidebook/`: 现有的知识库，直接映射为 Library
+- `Team-Guidebook/档案馆/`: Obsidian 日记（作为 News 数据源，默认不公开，需 `publish: true`）
+- `attachments/`: 图片与附件存放处（支持 `![[...]]` 解析到该目录）
+
+## 详细实现步骤更新
+
+### 1) 初始化 Astro 站点骨架
+
+- 初始化 Astro 5 + TS + Tailwind。
+- 安装必要的 Markdown 插件库（`remark-wiki-link` 等）。
+
+### 2) 设计路由与 i18n
+
+- 保持原计划：`/zh/...` 和 `/en/...`。
+
+### 3) 内容同步策略（开发 vs 生产）
+
+- **本地开发**：在 `astro.config.mjs` 或启动脚本中，允许配置 `CONTENT_DIR` 环境变量。
+    - 如果是本地路径：直接加载（Astro Content Collections 支持 `base` 路径配置或简单的软链策略）。
+- **CI 构建**：编写 `scripts/setup-content.mjs`，在构建前把远端内容 clone 到项目约定的 `src/content` 或 `.content` 目录。
+
+### 4) Obsidian 语法兼容（新增关键步骤）
+
+- **WikiLinks**：集成 `remark-wiki-link`，配置 permalinks 映射，使 `[[My Project]] `能正确跳转到 `/zh/projects/my-project`。
+- **Callouts**：集成 `remark-gh-admonitions` 或类似插件，渲染 Obsidian 的 `> [!INFO]` 语法。
+- **图片/资源路径**：
+    - Obsidian 通常使用相对路径 `![](../../attachments/img.png)` 或简单的 `![[img.png]]`（固定在 `attachments/`）。
+    - 方案：配置 Astro 的 `image()` loader (Astro 5) 或编写 remark 插件，将图片路径解析为 Astro 可处理的 ESM 导入或 public 引用。
+
+### 5) Content Collections & Schema
+
+- 定义严格的 Schema (`src/content/config.ts`)。
+- 字段设计：
+    - `publish`: boolean (控制是否上线)
+    - `date`: date
+    - `tags`: array
+    - `aliases`: array (People 用于解析 `#P/<Name>`)
+    - `related_people`: reference (News/Projects 等关联 People；News 可由 `#P/` 推导)
+    - `bib_key`: string (关联 BibTeX)
+
+### 6) Publications (BibTeX)
+
+- 依然使用 `citation-js`，读取 Obsidian 目录下的 `.bib` 文件。
+
+### 7) Library (Team-Guidebook)
+
+- 重点在于**目录树生成**。由于 Obsidian 是文件夹嵌套结构，需要递归扫描目录生成侧边栏导航树。
+
+### 8) 评论、搜索、CI/CD
+
+- 保持原计划（Giscus, Pagefind, GitHub Actions）。
+
+## 验收标准更新
+
+1.  **Obsidian 友好**：你在 Obsidian 里修改一个 Markdown 文件，保存后，本地运行的 Astro 页面能立刻热更新显示内容。
+2.  **图片正常**：Obsidian 里粘贴的图片（存放在 attachments 下），在网页中能正常加载，且无需手动修改路径。
+3.  **链接正常**：Obsidian 里的双链 `[[...]]` 在网页上能正确跳转；附件嵌入 `![[...]] `能正确解析到 `/attachments/...`。
