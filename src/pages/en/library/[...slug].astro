@@ -1,0 +1,52 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const library = await getCollection('library', ({ data }) => data.publish !== false);
+  
+  return library.map((item) => {
+    // Convert file path to slug array
+    // item.id is relative to src/content/library/, so it might be:
+    // - "词条/Git.md" -> ["词条", "Git"]
+    // - "Git.md" -> ["Git"]
+    // - "图书馆/词条/Git.md" -> ["图书馆", "词条", "Git"] (if symlink includes 图书馆/)
+    const pathParts = item.id.split('/').filter(part => part);
+    
+    // Remove file extension from the last part
+    const slugParts = pathParts.map((part, index) => {
+      if (index === pathParts.length - 1) {
+        return part.replace(/\.md$/, '');
+      }
+      return part;
+    });
+    
+    // Remove "图书馆" if it's the first part (shouldn't happen, but handle it)
+    if (slugParts[0] === '图书馆') {
+      slugParts.shift();
+    }
+    
+    // Ensure we have at least one slug part
+    if (slugParts.length === 0) {
+      slugParts.push('index');
+    }
+    
+    return {
+      params: { slug: slugParts },
+      props: { item },
+    };
+  });
+}
+
+const { item } = Astro.props;
+const { Content } = await item.render();
+const title = item.data.title || item.id.split('/').pop()?.replace(/\.md$/, '') || item.id;
+---
+
+<BaseLayout title={title} description={title} lang="en">
+  <article class="prose dark:prose-invert max-w-none">
+    <h1>{title}</h1>
+    <Content />
+  </article>
+</BaseLayout>
+

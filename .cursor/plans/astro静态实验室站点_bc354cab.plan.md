@@ -154,5 +154,3 @@ flowchart TD
 - 保持原计划（Giscus, Pagefind, GitHub Actions）。
 
 ## 验收标准更新
-
-1.  **Obsidian 友好**：你在 Obsidian 里修改一个 Markdown 文件，保存后，本地运行的 Astro 页面能立刻热更新显示内容。

@@ -1,12 +1,161 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+// Get all library items, filtered by publish status
+const allLibrary = await getCollection('library', ({ data }) => data.publish !== false);
+
+// Build a tree structure from library items
+interface LibraryNode {
+  name: string;
+  path: string[];
+  children: LibraryNode[];
+  items: typeof allLibrary;
+}
+
+function buildTree(items: typeof allLibrary): LibraryNode[] {
+  const root: LibraryNode = {
+    name: 'Library',
+    path: [],
+    children: [],
+    items: [],
+  };
+  
+  items.forEach((item) => {
+    // item.id is relative to src/content/library/
+    // Remove file extension and split into parts
+    const pathParts = item.id.split('/').filter(part => part);
+    const cleanParts = pathParts.map((part, index) => {
+      if (index === pathParts.length - 1) {
+        return part.replace(/\.md$/, '');
+      }
+      return part;
+    }).filter(part => part !== '图书馆'); // Remove 图书馆 if present
+    
+    let current = root;
+    cleanParts.forEach((part, index) => {
+      let child = current.children.find(c => c.name === part);
+      if (!child) {
+        child = {
+          name: part,
+          path: [...current.path, part],
+          children: [],
+          items: [],
+        };
+        current.children.push(child);
+      }
+      current = child;
+      
+      // If this is the last part, add the item
+      if (index === cleanParts.length - 1) {
+        current.items.push(item);
+      }
+    });
+  });
+  
+  return root.children;
+}
+
+const tree = buildTree(allLibrary);
 ---
 
 <BaseLayout title="Library" description="Knowledge base" lang="en">
   <div class="prose dark:prose-invert max-w-none">
     <h1>Library</h1>
-    <p class="lead">This will render the Team-Guidebook knowledge base.</p>
-    <p class="text-sm text-gray-500 dark:text-gray-400">Sidebar navigation and wikilinks will be enabled later.</p>
+    <p class="lead">Lab knowledge base and documentation collection.</p>
+    
+    {tree.length > 0 ? (
+      <div class="mt-8 border rounded-lg p-6 dark:border-gray-700">
+        <h2 class="text-xl font-bold mb-4">Table of Contents</h2>
+        <div class="space-y-1">
+          {tree.map((node) => {
+            const slug = node.path.join('/');
+            return (
+              <div class="ml-4">
+                <div class="py-2">
+                  {node.items.length > 0 ? (
+                    <a 
+                      href={`/en/library/${slug}`}
+                      class="text-blue-600 hover:underline font-medium"
+                    >
+                      {node.name}
+                    </a>
+                  ) : (
+                    <span class="font-semibold text-gray-700 dark:text-gray-300">{node.name}</span>
+                  )}
+                </div>
+                {node.children.length > 0 && (
+                  <div class="ml-4">
+                    {node.children.map((child) => {
+                      const childSlug = child.path.join('/');
+                      return (
+                        <div class="ml-4">
+                          <div class="py-2">
+                            {child.items.length > 0 ? (
+                              <a 
+                                href={`/en/library/${childSlug}`}
+                                class="text-blue-600 hover:underline font-medium"
+                              >
+                                {child.name}
+                              </a>
+                            ) : (
+                              <span class="font-semibold text-gray-700 dark:text-gray-300">{child.name}</span>
+                            )}
+                          </div>
+                          {child.children.length > 0 && (
+                            <div class="ml-4">
+                              {child.children.map((grandchild) => {
+                                const grandchildSlug = grandchild.path.join('/');
+                                return (
+                                  <div class="ml-4">
+                                    <div class="py-2">
+                                      {grandchild.items.length > 0 ? (
+                                        <a 
+                                          href={`/en/library/${grandchildSlug}`}
+                                          class="text-blue-600 hover:underline font-medium"
+                                        >
+                                          {grandchild.name}
+                                        </a>
+                                      ) : (
+                                        <span class="font-semibold text-gray-700 dark:text-gray-300">{grandchild.name}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {node.items.length > 1 && (
+                  <div class="ml-4">
+                    {node.items.slice(1).map((item) => {
+                      const itemTitle = item.data.title || item.id.split('/').pop()?.replace(/\.md$/, '') || item.id;
+                      return (
+                        <div class="py-1">
+                          <a 
+                            href={`/en/library/${slug}`}
+                            class="text-blue-600 hover:underline text-sm"
+                          >
+                            {itemTitle}
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ) : (
+      <p class="text-gray-500 dark:text-gray-400 mt-8">No content yet</p>
+    )}
   </div>
 </BaseLayout>
+
 
