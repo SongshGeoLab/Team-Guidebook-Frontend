@@ -48,3 +48,4 @@
 ### Build & Deploy
 - Output: pure static HTML (`output: "static"`)
 - Hosting: GitHub Pages (default), compatible with any static host.
+- Content sync: `scripts/setup-content.mjs` prepares `.content/` via `CONTENT_DIR` (symlink) or `CONTENT_REPO_URL`/`CONTENT_REPO_REF` (clone), fallback to local `Team-Guidebook/`.

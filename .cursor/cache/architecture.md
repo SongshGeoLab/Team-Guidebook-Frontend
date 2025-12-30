@@ -9,6 +9,7 @@
   - `components/`: UI components.
 - `public/attachments/`: Static assets synced from the Obsidian vault (see Attachments section).
 - `.content/` (gitignored): Symlink/clone target directory for Obsidian content in dev/CI.
+- `scripts/setup-content.mjs`: Content bootstrapper. Prefers `CONTENT_DIR` (symlink to `.content/`), else `CONTENT_REPO_URL` (+ optional `CONTENT_REPO_REF`) to clone, else falls back to local `Team-Guidebook/`. Wired via `predev`/`prebuild` and `setup:content`.
 
 **Direct-map Content Source (Obsidian Vault)**
 

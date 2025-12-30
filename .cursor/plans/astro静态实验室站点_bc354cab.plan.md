@@ -12,7 +12,7 @@ todos:
       - scaffold-astro
   - id: content-sync-strategy
     content: 实现“双模”内容加载策略：开发环境支持本地路径（软链/复制 Obsidian 仓库），CI 环境支持 Git Clone 远端仓库
-    status: pending
+    status: completed
     dependencies:
       - scaffold-astro
   - id: obsidian-integration

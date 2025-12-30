@@ -21,3 +21,11 @@
     - Added `wikiLinkClassName: 'internal-link'` to match frontend styling contract in `FRONTEND_GUIDELINES.md`.
     - Supports explicit language prefixes in WikiLinks: `[[en/SomePage]]` or `[[zh/SomePage]]` override inferred locale.
     - Fixed plugin invocation: `wikiLinkWithLocale()` must be called to return the actual remark plugin.
+
+- **Content Sync & Header Navigation (Step 3 + Bugfix)**:
+    - Added `scripts/setup-content.mjs` with dual-mode strategy:
+        - `CONTENT_DIR` symlink to `.content/`
+        - `CONTENT_REPO_URL` (+ optional `CONTENT_REPO_REF`) clone into `.content/`
+        - Fallback to local `Team-Guidebook/`
+    - Wired `predev`/`prebuild` and `setup:content` scripts to prepare `.content/` before dev/build.
+    - Implemented `Header.astro`: URL-based locale detection, `/zh` ⇄ `/en` switch, 7 main nav links (Home/News/Projects/Library/Publications/People/About).

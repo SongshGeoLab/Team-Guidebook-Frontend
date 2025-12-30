@@ -1,1 +1,62 @@
+---
+// Derive current locale from the pathname; default to zh.
+const pathname = Astro.url?.pathname ?? '/';
+const pathSegments = pathname.split('/').filter(Boolean);
+const currentLang = pathSegments[0] === 'en' ? 'en' : 'zh';
+
+const withLang = (lang: 'zh' | 'en') => {
+  if (pathSegments[0] === 'en' || pathSegments[0] === 'zh') {
+    const segments = [...pathSegments];
+    segments[0] = lang;
+    return `/${segments.join('/')}${pathname.endsWith('/') ? '/' : ''}`;
+  }
+  return `/${lang}/`;
+};
+
+const nav = [
+  { label: currentLang === 'en' ? 'Home' : '首页', href: `/${currentLang}/` },
+  { label: currentLang === 'en' ? 'News' : '动态', href: `/${currentLang}/news/` },
+  { label: currentLang === 'en' ? 'Projects' : '项目', href: `/${currentLang}/projects/` },
+  { label: currentLang === 'en' ? 'Library' : '图书馆', href: `/${currentLang}/library/` },
+  { label: currentLang === 'en' ? 'Publications' : '出版物', href: `/${currentLang}/publications/` },
+  { label: currentLang === 'en' ? 'People' : '团队', href: `/${currentLang}/people/` },
+  { label: currentLang === 'en' ? 'About' : '关于', href: `/${currentLang}/about/` }
+];
+---
+
+<header class="border-b border-gray-200 dark:border-gray-800">
+  <div class="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+    <div class="text-lg font-semibold">
+      <a href={`/${currentLang}/`} class="hover:opacity-80 transition-opacity">
+        {currentLang === 'en' ? 'Our Lab' : '实验室'}
+      </a>
+    </div>
+
+    <nav class="flex items-center gap-6 text-sm font-medium">
+      {nav.map((item) => (
+        <a
+          href={item.href}
+          class="text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="flex items-center gap-2 text-sm">
+      <a
+        href={withLang('zh')}
+        class={`px-3 py-1 rounded ${currentLang === 'zh' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+      >
+        中文
+      </a>
+      <a
+        href={withLang('en')}
+        class={`px-3 py-1 rounded ${currentLang === 'en' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+      >
+        EN
+      </a>
+    </div>
+  </div>
+</header>
 
