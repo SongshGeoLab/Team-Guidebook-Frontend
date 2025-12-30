@@ -32,7 +32,6 @@
   - The item does not appear in lists.
   - The page route is not generated (404 in production build).
 - Default behavior if missing: `publish: true`.
-- Exception (Obsidian Daily Notes used as News): if `publish` is missing, treat it as `publish: false` (explicit opt-in).
 
 ### 4) Obsidian WikiLinks Rules
 
@@ -64,104 +63,90 @@
   - `translation_of: <stable-id>` to link a translated page to the canonical one.
 - Language switch should try to jump to the paired page; if missing, fallback to the section index.
 
-### 7) Frontmatter Schemas (Minimal)
+### 7) Project Structure & Role Explanations
 
-#### News (Obsidian Daily Notes)
+- **`src/layouts/BaseLayout.astro`**:
+  - The master layout template.
+  - Handles `<head>` metadata, global CSS imports (`styles/global.css`), and the basic page structure (HTML/Body).
+  - Integrates `Header` and `Footer` components.
+  - Accepts `title`, `description`, and `lang` props for SEO and accessibility.
 
-**Source**
-- News entries are derived from Obsidian Daily Notes under:
-  - `Team-Guidebook/档案馆/YYYY-MM-DD.md`
+- **`src/components/Header.astro`**:
+  - Top navigation bar.
+  - Contains site branding (Logo/Title) and main navigation links.
+  - Handles language switching logic (linking to `/zh` or `/en`).
 
-**Visibility**
-- A daily note is eligible to produce News entries when:
-  - frontmatter `publish: true`, AND
-  - frontmatter `draft` is not true
-- Rationale: daily notes often include private/internal logs; therefore they require explicit opt-in via `publish: true`.
+- **`src/components/Footer.astro`**:
+  - Page footer.
+  - Contains copyright info and secondary links.
 
-**Date**
-- The canonical date defaults to the filename (`YYYY-MM-DD`).
-- If frontmatter `date` exists, it may override the filename date (but should be consistent).
+- **`src/pages/index.astro`**:
+  - **Role**: Root Redirector.
+  - **Behavior**: Immediately redirects users to the default language path (`/zh/`).
+  - **SEO**: Can be enhanced with language detection logic in the future.
 
-**People Relation via Inline Tags**
-- Use inline tags to associate a News entry with people:
-  - `#P/<DisplayName>` (example: `#P/宋爽`)
-- Parsing rules:
-  - Extract `<DisplayName>` after `#P/`.
-  - Resolve `<DisplayName>` by matching against People frontmatter `aliases`.
-  - If unresolved, ignore (do not break build).
+- **`src/pages/[lang]/index.astro`**:
+  - **Role**: Localized Landing Pages (`/zh/` and `/en/`).
+  - **Content**: Contains the actual homepage content (Welcome message, News highlights, Quick links) tailored to the specific language.
 
-**Extraction**
-- Each bullet item line in the daily note is treated as one News entry.
-  - Example: `- 10:04 Completed something #P/Someone`
-- Optional future extension: only extract bullets under a dedicated `## News` section.
+- **`astro.config.mjs`**:
+  - Astro configuration file.
+  - **Integrations**: Configures Tailwind CSS.
+  - **Markdown**: Configures `remark-wiki-link` for Obsidian compatibility.
+    - `hrefTemplate`: Controls how `[[WikiLinks]]` are resolved to URL paths.
 
-#### People (`lab/{lang}/people/*.md`)
+### 8) Backend Data Pipeline Specification
 
-```yaml
----
-id: "hu-bo"                 # stable person id (recommended = slug)
-name: "胡博"                # display name (for zh page; en page uses its own content tree)
-publish: true
-aliases: ["胡博", "Hu Bo"]   # used to resolve #P/<DisplayName> tags from daily notes
-role: "PhD Student"
-avatar: "/attachments/hu-bo.jpg"
-links:
-  - label: "GitHub"
-    url: "https://github.com/..."
----
-```
+This section defines the technical implementation required to serve content to the frontend, ensuring separation of concerns.
 
-```yaml
----
-id: "alice-wang"
-name: "Alice Wang"
-publish: true
-role: "PhD Student"
-avatar: "/attachments/alice.jpg"
-links:
-  - label: "GitHub"
-    url: "https://github.com/..."
-  - label: "Google Scholar"
-    url: "https://scholar.google.com/..."
-interests: ["Hydrology", "GIS"]
-email: "alice@example.com"
----
-```
+#### Schema as Contract (`src/content/config.ts`)
+The backend must provide strict Zod schemas for all collections. This acts as the API contract with the frontend.
 
-#### Projects (`lab/{lang}/projects/*.md`)
+- **People Collection**:
+  - `id`: string (required)
+  - `name`: string (required)
+  - `role`: string (required)
+  - `avatar`: string (optional, default to placeholder)
+- **Projects Collection**:
+  - `people`: array of strings (must match `people` collection IDs)
+  - `start_date`: date (required)
+- **Validation Strategy**:
+  - Use `z.reference()` (if available in Astro 5) or custom validation to ensure relational integrity (e.g., project members must exist in the people collection).
 
-```yaml
----
-id: "project-absespy"
-title: "Project Title"
-publish: true
-tags: ["hpc", "open-source"]
-people: ["alice-wang"]
-start_date: "2024-01-01"
-end_date: null
-repo: "https://github.com/org/repo"
----
-```
+#### Custom Content Loaders
+Since source content comes from non-standard structures (Daily Notes, BibTeX), custom loaders are required.
 
-#### Publications (BibTeX)
+1.  **News Loader (Obsidian Daily Notes)**:
+    - **Input**: `Team-Guidebook/档案馆/*.md`
+    - **Logic**:
+      - Read file content.
+      - Parse frontmatter to check `publish: true`.
+      - Iterate through list items (bullet points).
+      - Regex match `#P/<Name>` to extract related people.
+      - Construct `NewsItem` object: `{ date, content (html), related_people, tags }`.
+    - **Output**: A virtual `news` collection.
 
-- BibTeX file location:
-  - `lab/{lang}/publications/publications.bib`
+2.  **BibTeX Loader (Publications)**:
+    - **Input**: `lab/{lang}/publications/*.bib`
+    - **Library**: Use `citation-js` or similar.
+    - **Logic**:
+      - Parse `.bib` file into JSON.
+      - Generate a unique ID for each entry (e.g., citation key).
+    - **Output**: A virtual `publications` collection exposed as JSON objects to the frontend.
 
-Optional highlight notes:
-- `lab/{lang}/publications/highlights/*.md`
+#### Markdown Processing Pipeline (`astro.config.mjs`)
+To support Obsidian-specific syntax, the remark/rehype pipeline must be configured:
 
-```yaml
----
-id: "highlight-wang2025"
-title: "Paper Highlight Title"
-publish: true
-bib_key: "Wang2025SomePaper" # must match BibTeX entry key
-tags: ["method"]
----
-```
+- **WikiLinks (`[[...]]`)**:
+  - Use `remark-wiki-link`.
+  - **Resolution**: Map `[[slug]]` to `/[lang]/library/[slug]`.
+  - **Styling**: Add class `.internal-link` for frontend styling.
+- **Callouts (`> [!info]`)**:
+  - Use `remark-gh-admonitions` or `remark-directive` to transform into semantic HTML `<aside>` or `<div>` with classes (e.g., `.admonition.info`).
+- **Assets (`![[...]]`)**:
+  - Transform Obsidian embed syntax into standard Markdown image syntax `![](/attachments/...)`.
 
-### 8) Comments Policy (Recommended Default)
+### 9) Comments Policy (Recommended Default)
 
 - Enable comments for:
   - News pages
@@ -169,15 +154,14 @@ tags: ["method"]
 - Disable comments for:
   - People / Projects / Library pages (can be enabled later)
 
-### 9) Team-Guidebook as Library
+### 10) Team-Guidebook as Library
 
 - `Team-Guidebook/**/*.md` is rendered under `/[lang]/library/...`.
 - Prefer normal Markdown links where possible.
 - Images should prefer `/attachments/...` for website compatibility.
 
-### 10) Content Quality Constraints
+### 11) Content Quality Constraints
 
 - Dates must be ISO strings: `YYYY-MM-DD`.
 - All referenced slugs must exist in the same language tree.
 - Prefer stable slugs (avoid frequent renames).
-

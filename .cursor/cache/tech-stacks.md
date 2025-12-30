@@ -23,21 +23,23 @@
   - Astro Content Collections (Zod schema validation + type generation)
   - `citation-js` (BibTeX -> JSON + formatted citations)
   - Obsidian markdown extensions (WikiLinks, Callouts, `![[...]]` attachments) via remark/rehype
+    - **`remark-wiki-link`**: Configured in `astro.config.mjs` to parse `[[WikiLinks]]`. Custom `hrefTemplate` used for context-aware path resolution (no hardcoded language prefix).
+    - **`remark-gh-admonitions`** (or similar): For Obsidian Callouts.
 
 ### UI
-- Styling: Tailwind CSS
-- Components: shadcn/ui (Radix UI)
+- Styling: Tailwind CSS (v4 via `@tailwindcss/vite`)
+- Components: shadcn/ui (Radix UI) - *Planned*
 - Icons: Lucide
 
 ### Search
 - Pagefind (static full-text search)
 
 ### i18n
-- Astro i18n routing (locale-prefixed routes)
+- Astro i18n routing (locale-prefixed routes: `/zh/...`, `/en/...`)
 
 ### Comments
-- GitHub Issues-based comments (one issue/discussion thread per content item, embedded client-side)
+- Giscus (GitHub Discussions-based, client-side embedding)
 
 ### Build & Deploy
 - Output: pure static HTML (`output: "static"`)
-- Hosting: any static hosting or a Go web server for distribution
+- Hosting: GitHub Pages (default), compatible with any static host.

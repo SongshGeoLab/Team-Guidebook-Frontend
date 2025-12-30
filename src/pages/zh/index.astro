@@ -1,0 +1,28 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="实验室主页" description="欢迎来到我们的研究实验室" lang="zh">
+  <div class="prose dark:prose-invert max-w-none">
+    <h1>欢迎来到我们的实验室</h1>
+    <p class="lead">
+      我们是一个专注于 [研究方向] 的研究小组。本网站记录了我们的项目、出版物和团队成员。
+    </p>
+    
+    <div class="grid md:grid-cols-2 gap-8 mt-12">
+      <div class="p-6 border rounded-lg dark:border-gray-700">
+        <h2 class="text-2xl font-bold mb-4">最新动态</h2>
+        <p>敬请期待更新...</p>
+      </div>
+      
+      <div class="p-6 border rounded-lg dark:border-gray-700">
+        <h2 class="text-2xl font-bold mb-4">快速链接</h2>
+        <ul class="space-y-2">
+          <li><a href="/zh/projects" class="text-blue-600 hover:underline">项目</a></li>
+          <li><a href="/zh/publications" class="text-blue-600 hover:underline">出版物</a></li>
+          <li><a href="/zh/people" class="text-blue-600 hover:underline">团队</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
