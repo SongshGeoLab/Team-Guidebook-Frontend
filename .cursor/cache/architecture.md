@@ -124,6 +124,16 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - **Current State**: Display "Coming soon" or empty state messages until Content Collections are implemented.
   - **Future**: Will be populated with actual content from Obsidian vault via Content Collections.
 
+- **`src/pages/test-collections.astro`**:
+  - **Purpose**: Test page to verify Content Collections are working correctly.
+  - **Usage**: Accessible at `/test-collections` route for development/debugging.
+  - **Functionality**: 
+    - Queries all collections using `getCollection()` API.
+    - Displays counts and sample entries from each collection (People, Projects, Library, Publications).
+    - Filters by `publish !== false` to show only published content.
+    - Useful for verifying schema validation, data loading, and symlink setup.
+  - **Note**: This is a development/testing page and can be removed or moved to a development-only route in production.
+
 - **`astro.config.mjs`**:
   - Astro configuration file.
   - **Integrations**: Configures Tailwind CSS via `@tailwindcss/vite` plugin.
@@ -150,36 +160,60 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - **Purpose**: Converts Obsidian callout syntax to remark directive format.
   - **Input**: Markdown with Obsidian callouts: `> [!INFO] Title\n> Content`
   - **Output**: Remark directive nodes: `:::info[Title]...:::`
-  - **Logic**: Visits `blockquote` nodes, detects `[!TYPE]` pattern in first paragraph, extracts callout type and title, converts remaining content to directive children.
+  - **Logic**: 
+    - Visits `blockquote` nodes, detects `[!TYPE]` pattern in first paragraph.
+    - Uses `extractText()` helper to collect all text from paragraph children (handles Markdown formatting like `**Bold Title**`).
+    - Extracts callout type and title, converts remaining content to directive children.
+    - Handles edge cases: empty titles, titles with Markdown formatting, content after title in first paragraph.
   - **Supported Types**: note, abstract, info, tip, success, question, warning, failure, danger, bug, example, quote (case-insensitive).
+  - **Important**: Always returns the tree to maintain the processing pipeline (unified/remark requirement).
 
 - **`src/utils/rehype-callouts.js`**:
   - **Purpose**: Transforms directive nodes (from `remark-directive-rehype`) into styled HTML callout elements.
-  - **Input**: Rehype nodes with `dataName` property (from directive conversion).
+  - **Input**: Rehype nodes with `tagName` set to directive name (e.g., 'info', 'warning') after `remark-directive-rehype` conversion.
   - **Output**: HTML `<aside>` elements with classes `admonition admonition-{type}` and `data-callout` attribute.
-  - **Structure**: Creates title paragraph (if exists) + content children.
+  - **Logic**:
+    - Visits all nodes, checks if `tagName` matches known callout types.
+    - Extracts title from `data-title` attribute or first child paragraph.
+    - Transforms node to `<aside>` with proper structure: title paragraph (if exists) + content children.
   - **Styling**: CSS classes are defined in `src/styles/global.css` for each callout type.
+  - **Important**: Always returns the tree to maintain the processing pipeline (unified/rehype requirement).
 
 - **`src/utils/remark-obsidian-image.js`**:
   - **Purpose**: Transforms Obsidian image embed syntax to standard Markdown images.
   - **Input**: Markdown text nodes containing `![[image.png]]` or `![[path/to/image.png]]`.
   - **Output**: Standard Markdown image nodes pointing to `/attachments/...`.
-  - **Logic**: Visits text nodes, matches `![[...]]` pattern, extracts image path, normalizes path (removes leading/trailing slashes), creates image node with `/attachments/` prefix.
+  - **Logic**: 
+    - Visits text nodes, matches `![[...]]` pattern using regex.
+    - Collects all matches before processing (to avoid index issues when modifying parent.children).
+    - Extracts image path, normalizes path (removes leading/trailing slashes).
+    - Creates image node with `/attachments/` prefix and `obsidian-image` CSS class.
+    - Replaces text nodes with new nodes (text + image) in reverse order to maintain correct indices.
   - **Path Handling**: Supports nested paths, normalizes to kebab-case segments.
   - **CSS Class**: Adds `obsidian-image` class to generated image nodes for styling.
+  - **Important**: Always returns the tree to maintain the processing pipeline (unified/remark requirement). The `file` parameter is optional and should not cause early exit.
 
 - **`scripts/setup-content.mjs`**:
   - **Purpose**: Prepares content directory and syncs attachments before dev/build.
-  - **Content Sync**: Handles three modes:
-    1. `CONTENT_DIR` environment variable → symlink to `.content/`
-    2. `CONTENT_REPO_URL` → git clone to `.content/`
-    3. Fallback → use local `Team-Guidebook/`
+  - **Content Sync** (`resolveSource()`, `linkSource()`, `cloneSource()` functions):
+    - Handles three modes:
+      1. `CONTENT_DIR` environment variable → symlink to `.content/`
+      2. `CONTENT_REPO_URL` (+ optional `CONTENT_REPO_REF`) → git clone to `.content/`
+      3. Fallback → use local `Team-Guidebook/`
+    - **`cleanDest()` Function**: 
+      - Removes existing `.content` if it exists (handles symlinks, regular files, and directories).
+      - Detects and warns about regular files (shouldn't be committed) vs symlinks.
+      - Ensures clean state before creating new symlink.
   - **Attachment Sync** (`syncAttachments()` function):
     - Syncs `Team-Guidebook/assets/` and `Team-Guidebook/图片库/` to `public/attachments/`.
     - Recursively copies directories and files.
     - Detects filename collisions and warns (doesn't overwrite).
     - Handles both symlink and direct directory scenarios.
-  - **Execution**: Wired via `predev` and `prebuild` npm scripts.
+  - **Content Collections Setup** (`setupContentCollections()` function):
+    - Creates symlinks from `src/content/{collection}/` to corresponding directories in `.content/Team-Guidebook/`.
+    - Maps collections: `people` → `通讯录/`, `projects` → `图书馆/项目/`, `library` → `图书馆/`, `publications` → `图书馆/文献/`.
+    - Handles edge cases: removes existing files/directories before creating symlinks.
+  - **Execution**: Wired via `predev` and `prebuild` npm scripts, also available via `npm run setup:content`.
 
 - **`src/styles/global.css`**:
   - **Purpose**: Global styles for the site, including Obsidian syntax support.
@@ -189,6 +223,41 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
     - Dark mode support via Tailwind's `dark:` prefix.
   - **Internal Links**: `.internal-link` class for WikiLinks (dotted underline, blue color, hover effects).
   - **Obsidian Images**: `.obsidian-image` class (rounded corners, shadow).
+
+- **`src/content/config.ts`**:
+  - **Purpose**: Defines Zod schemas for all Content Collections and establishes the data contract between Obsidian content and the website.
+  - **Base Schema**: Common fields shared across collections:
+    - `publish`: boolean (default true) - Controls whether content appears on the site.
+    - `date`: date/string (optional, with transform) - Publication or creation date.
+    - `tags`: array/null (default empty array) - Tags for categorization.
+  - **Collection Schemas**:
+    - **People**: Maps from `通讯录/*.md`. Required: `id`, `name`, `role`. Optional: `avatar`, `email`, `aliases` (for `#P/<Name>` resolution), `links`, `interests`.
+    - **Projects**: Maps from `图书馆/项目/*.md`. Required: `id`, `title`, `start_date`. Optional: `end_date`, `people` (Person IDs), `repo`, `bib_key`.
+    - **News**: Maps from `档案馆/YYYY-MM-DD.md` (Daily Notes). Required: `date`, `content` (HTML). Optional: `related_people` (resolved from `#P/<Name>`). **Note**: Requires custom loader for bullet extraction (TODO).
+    - **Library**: Maps from `图书馆/**/*.md` (excluding `项目/` and `文献/`). Very permissive schema using `.passthrough()` to allow extra fields. Optional: `title`, `lang`.
+    - **Publications**: Maps from `图书馆/文献/*.md` (Phase 1: markdown-based). Required: `title`, `authors`, `year`. Optional: `venue`, `bib_key`, `doi`, `pdf`, `tags`.
+  - **Schema Features**:
+    - Handles `null` values gracefully (especially for arrays like `tags`, `aliases`).
+    - Transforms date strings to Date objects automatically.
+    - Provides TypeScript type inference for all collections via Astro's Content Collections API.
+  - **Usage**: Collections are accessed via `getCollection()` from `astro:content` in pages/components.
+
+- **`scripts/setup-content.mjs` - Content Collections Setup**:
+  - **`setupContentCollections()` Function**:
+    - **Purpose**: Creates symlinks from `src/content/{collection}/` to corresponding directories in `.content/Team-Guidebook/`.
+    - **Mapping**:
+      - `src/content/people` → `.content/Team-Guidebook/通讯录/`
+      - `src/content/projects` → `.content/Team-Guidebook/图书馆/项目/`
+      - `src/content/library` → `.content/Team-Guidebook/图书馆/`
+      - `src/content/publications` → `.content/Team-Guidebook/图书馆/文献/`
+    - **Implementation**:
+      - `linkCollection(collectionName, sourcePath)` helper function:
+        - Resolves source path relative to Team-Guidebook root.
+        - Removes existing symlinks/files/directories before creating new symlink.
+        - Creates directory symlink using `fs.symlinkSync()`.
+        - Handles edge cases: detects regular files (shouldn't be committed), directories, and existing symlinks.
+    - **Execution**: Called automatically during `predev` and `prebuild` phases after content source is resolved.
+    - **Note**: Library collection includes entire `图书馆/` directory (including `项目/` and `文献/` subdirectories). Filtering is handled at query time or via custom loaders if needed.
 
 ### 8) Backend Data Pipeline Specification
 
@@ -249,8 +318,13 @@ To support Obsidian-specific syntax, the remark/rehype pipeline is configured wi
 4. **`wikiLinkWithLocale()`**: Converts `[[link]]` → `/<lang>/library/...`
 
 **Rehype Phase (HTML AST transformation)**:
-1. **`remarkDirectiveRehype`**: Converts directive nodes to HTML nodes
-2. **`rehypeCallouts`**: Transforms directives to styled `<aside>` elements
+1. **`remarkDirectiveRehype`**: Bridge plugin that converts remark directive nodes to rehype HTML nodes. **Must be in `rehypePlugins` array, not `remarkPlugins`**, as it operates on HAST (HTML AST) not MDAST (Markdown AST).
+2. **`rehypeCallouts`**: Transforms directive nodes to styled `<aside>` elements
+
+**Plugin Pipeline Requirements**:
+- All remark/rehype transformer functions **must return the tree** (even if unmodified) to maintain the processing pipeline.
+- Returning `undefined` breaks the pipeline and prevents subsequent plugins from receiving the AST.
+- The `file` parameter in remark plugins is optional and should not trigger early exit.
 
 **Details**:
 - **WikiLinks (`[[...]]`)**:
@@ -285,3 +359,16 @@ To support Obsidian-specific syntax, the remark/rehype pipeline is configured wi
 - Dates must be ISO strings: `YYYY-MM-DD`.
 - All referenced slugs must exist in the same language tree.
 - Prefer stable slugs (avoid frequent renames).
+
+### 12) Git Ignore Rules
+
+The following files/directories are gitignored to prevent committing development artifacts:
+
+- **`.content/`** (directory): The working directory for Obsidian content (symlinked or cloned).
+- **`.content`** (file): Regular file that may be accidentally created (should be a symlink directory).
+- **`src/content`**: Symlinked directories pointing to `.content/Team-Guidebook/` subdirectories.
+- **`public/`**: Generated static assets (attachments synced from Obsidian vault).
+- **`.astro/`**: Generated TypeScript types from Content Collections.
+- **`dist/`**: Build output directory.
+
+**Important**: The `.content` file (not directory) should never be committed, as it contains absolute file system paths and conflicts with the symlink strategy used by `setup-content.mjs`.

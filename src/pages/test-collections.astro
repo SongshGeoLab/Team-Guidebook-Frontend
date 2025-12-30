@@ -1,0 +1,96 @@
+---
+// Test page to verify Content Collections are working
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Get all collections
+const people = await getCollection('people', ({ data }) => data.publish !== false);
+const projects = await getCollection('projects', ({ data }) => data.publish !== false);
+const library = await getCollection('library', ({ data }) => data.publish !== false);
+const publications = await getCollection('publications', ({ data }) => data.publish !== false);
+---
+
+<BaseLayout title="Content Collections 测试" description="验证 Content Collections 是否正常工作" lang="zh">
+  <div class="prose dark:prose-invert max-w-none">
+    <h1>Content Collections 测试</h1>
+    
+    <div class="space-y-8 mt-8">
+      <section>
+        <h2>People Collection ({people.length} 项)</h2>
+        {people.length > 0 ? (
+          <ul>
+            {people.map((person) => (
+              <li key={person.id}>
+                <strong>{person.data.name}</strong> - {person.data.role}
+                {person.data.aliases && person.data.aliases.length > 0 && (
+                  <span class="text-sm text-gray-500"> (别名: {person.data.aliases.join(', ')})</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="text-gray-500">暂无数据</p>
+        )}
+      </section>
+
+      <section>
+        <h2>Projects Collection ({projects.length} 项)</h2>
+        {projects.length > 0 ? (
+          <ul>
+            {projects.map((project) => (
+              <li key={project.id}>
+                <strong>{project.data.title}</strong>
+                {project.data.start_date && (
+                  <span class="text-sm text-gray-500">
+                    {' '}({new Date(project.data.start_date).toLocaleDateString('zh-CN')})
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="text-gray-500">暂无数据</p>
+        )}
+      </section>
+
+      <section>
+        <h2>Library Collection ({library.length} 项)</h2>
+        {library.length > 0 ? (
+          <ul>
+            {library.slice(0, 10).map((item) => (
+              <li key={item.id}>
+                <strong>{item.data.title || item.id}</strong>
+                {item.data.date && (
+                  <span class="text-sm text-gray-500">
+                    {' '}({new Date(item.data.date).toLocaleDateString('zh-CN')})
+                  </span>
+                )}
+              </li>
+            ))}
+            {library.length > 10 && (
+              <li class="text-gray-500">... 还有 {library.length - 10} 项</li>
+            )}
+          </ul>
+        ) : (
+          <p class="text-gray-500">暂无数据</p>
+        )}
+      </section>
+
+      <section>
+        <h2>Publications Collection ({publications.length} 项)</h2>
+        {publications.length > 0 ? (
+          <ul>
+            {publications.map((pub) => (
+              <li key={pub.id}>
+                <strong>{pub.data.title || pub.id}</strong>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="text-gray-500">暂无数据</p>
+        )}
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+

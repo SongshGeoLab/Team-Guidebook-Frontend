@@ -54,14 +54,21 @@ const cleanDest = (source) => {
       const stat = fs.lstatSync(dest);
       if (stat.isSymbolicLink()) {
         const target = fs.readlinkSync(dest);
-        if (path.resolve(cwd, target) === source) {
+        if (source && path.resolve(cwd, target) === source) {
           log(`Reusing existing symlink -> ${source}`);
           return false;
         }
+      } else if (stat.isFile()) {
+        // .content is a regular file (shouldn't be committed, but handle it)
+        log(`Removing regular file ${dest} (should be a symlink)`);
+      } else if (stat.isDirectory()) {
+        // .content is a directory (shouldn't happen, but handle it)
+        log(`Removing directory ${dest} (should be a symlink)`);
       }
     } catch {
       // fall through to removal
     }
+    // Remove file, directory, or symlink
     fs.rmSync(dest, { recursive: true, force: true });
   }
   return true;
@@ -83,14 +90,34 @@ const cloneSource = () => {
   log(`Cloned ${repoUrl} @ ${repoRef} into ${dest}`);
 };
 
+/**
+ * Get the Team-Guidebook root path from content root.
+ * Handles both .content/Team-Guidebook and direct Team-Guidebook scenarios.
+ * Also handles when .content is a symlink directly to Team-Guidebook.
+ */
+const getTeamGuidebookPath = (contentRoot) => {
+  // If contentRoot is directly Team-Guidebook, return it
+  if (path.basename(contentRoot) === 'Team-Guidebook') {
+    return contentRoot;
+  }
+  
+  // Check if contentRoot directly contains Team-Guidebook directories (通讯录, 图书馆, etc.)
+  // This happens when .content is a symlink directly to Team-Guidebook
+  const hasTeamGuidebookDirs = exists(path.resolve(contentRoot, '通讯录')) || 
+                                exists(path.resolve(contentRoot, '图书馆'));
+  
+  if (hasTeamGuidebookDirs) {
+    // contentRoot is already the Team-Guidebook root
+    return contentRoot;
+  }
+  
+  // Otherwise, assume Team-Guidebook is a subdirectory
+  return path.resolve(contentRoot, 'Team-Guidebook');
+};
+
 const syncAttachments = (contentRoot) => {
   const attachmentsDir = path.resolve(cwd, 'public', 'attachments');
-  // contentRoot could be .content (symlink/clone) or Team-Guidebook (fallback)
-  // In both cases, Team-Guidebook should be at contentRoot/Team-Guidebook or contentRoot itself
-  let teamGuidebookPath = contentRoot;
-  if (path.basename(contentRoot) !== 'Team-Guidebook') {
-    teamGuidebookPath = path.resolve(contentRoot, 'Team-Guidebook');
-  }
+  const teamGuidebookPath = getTeamGuidebookPath(contentRoot);
   const sourceAssets = path.resolve(teamGuidebookPath, 'assets');
   const sourceImages = path.resolve(teamGuidebookPath, '图片库');
 
@@ -133,26 +160,108 @@ const syncAttachments = (contentRoot) => {
   log('Attachments sync completed');
 };
 
+/**
+ * Setup symlinks in src/content/ to map Content Collections to .content/Team-Guidebook/
+ * This enables Direct Map strategy: Content Collections read from Obsidian vault structure.
+ */
+const setupContentCollections = (contentRoot) => {
+  const teamGuidebookPath = getTeamGuidebookPath(contentRoot);
+  const contentDir = path.resolve(cwd, 'src', 'content');
+
+  // Ensure src/content exists
+  if (!exists(contentDir)) {
+    fs.mkdirSync(contentDir, { recursive: true });
+  }
+
+  /**
+   * Create symlink for a collection.
+   * @param {string} collectionName - Collection name (e.g., 'people')
+   * @param {string} sourcePath - Source path in Team-Guidebook
+   */
+  const linkCollection = (collectionName, sourcePath) => {
+    const source = path.resolve(teamGuidebookPath, sourcePath);
+    const target = path.resolve(contentDir, collectionName);
+
+    if (!exists(source)) {
+      log(`Source directory ${source} not found, skipping ${collectionName} collection...`);
+      return;
+    }
+
+    // Remove existing symlink or directory
+    if (exists(target)) {
+      try {
+        const stat = fs.lstatSync(target);
+        if (stat.isSymbolicLink()) {
+          const existingTarget = fs.readlinkSync(target);
+          if (path.resolve(cwd, existingTarget) === source) {
+            log(`Reusing existing symlink: ${collectionName} -> ${sourcePath}`);
+            return;
+          }
+        }
+        fs.rmSync(target, { recursive: true, force: true });
+      } catch (err) {
+        log(`Warning: Could not remove existing ${target}: ${err.message}`);
+      }
+    }
+
+    try {
+      fs.symlinkSync(source, target, 'dir');
+      log(`Linked ${collectionName} collection: ${target} -> ${sourcePath}`);
+    } catch (err) {
+      error(`Failed to create symlink for ${collectionName}: ${err.message}`);
+    }
+  };
+
+  log('Setting up Content Collections symlinks...');
+  
+  // Map collections to Team-Guidebook directories
+  // Note: News requires custom loader (handled separately in src/content/loaders/)
+  linkCollection('people', '通讯录');
+  linkCollection('projects', '图书馆/项目');
+  
+  // Library: We need to include 图书馆/** but exclude 项目/ and 文献/
+  // Since Astro Content Collections doesn't support glob exclusions natively,
+  // we create a symlink to the entire 图书馆 directory.
+  // The exclusion will be handled at query time or via a custom loader.
+  // Alternative: Create individual symlinks for each subdirectory (more complex)
+  linkCollection('library', '图书馆');
+  
+  // Publications: map to 图书馆/文献 (short-term, markdown-based)
+  linkCollection('publications', '图书馆/文献');
+  
+  // Note: News collection requires a custom loader to extract bullet items
+  // from Daily Notes (档案馆/YYYY-MM-DD.md). This will be implemented
+  // in src/content/loaders/news.ts and wired via config.ts loader option.
+  
+  log('Content Collections symlinks setup completed');
+};
+
 const main = () => {
   const source = resolveSource();
+  let contentRoot = null;
 
   if (source) {
     linkSource(source);
-    // After linking, attachments should be read from .content (which points to source)
-    syncAttachments(dest);
+    contentRoot = dest; // .content points to source
+    syncAttachments(contentRoot);
+    setupContentCollections(contentRoot);
     return;
   }
 
   if (repoUrl) {
     cloneSource();
-    syncAttachments(dest);
+    contentRoot = dest; // .content is the clone destination
+    syncAttachments(contentRoot);
+    setupContentCollections(contentRoot);
     return;
   }
 
   // Fallback: use local Team-Guidebook if it exists
   if (exists(fallback)) {
     log(`Using fallback content source: ${fallback}`);
-    syncAttachments(fallback);
+    contentRoot = fallback;
+    syncAttachments(contentRoot);
+    setupContentCollections(contentRoot);
     return;
   }
 

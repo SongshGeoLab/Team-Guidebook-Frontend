@@ -59,3 +59,31 @@
         - Added `.internal-link` class styles for WikiLinks (dotted underline, blue color).
         - Added `.obsidian-image` class for embedded images (rounded corners, shadow).
         - Comprehensive callout styles with color-coded borders and backgrounds for each type.
+
+- **Content Collections & Schema (Step 5)**:
+    - **Schema Definition** (`src/content/config.ts`):
+        - Created comprehensive Zod schemas for all collections: `people`, `projects`, `news`, `library`, `publications`.
+        - Defined `baseSchema` with common fields: `publish` (boolean, default true), `date` (date/string with transform), `tags` (array/null handling).
+        - **People Schema**: Includes `id`, `name`, `role`, `avatar`, `email`, `aliases` (for `#P/<Name>` resolution), `links`, `interests`.
+        - **Projects Schema**: Includes `id`, `title`, `start_date`, `end_date`, `people` (array of Person IDs), `repo`, `bib_key`.
+        - **News Schema**: Includes `date`, `content` (HTML), `related_people` (resolved from `#P/<Name>` tags). Note: Requires custom loader for Daily Notes extraction (TODO).
+        - **Library Schema**: Permissive schema using `.passthrough()` to allow extra fields, includes `title`, `lang` (optional).
+        - **Publications Schema**: Includes `title`, `authors`, `venue`, `year`, `bib_key`, `doi`, `pdf`, `tags`.
+        - All schemas handle `null` values gracefully (especially for arrays) and transform date strings to Date objects.
+    - **Direct Map Strategy**:
+        - Enhanced `scripts/setup-content.mjs` with `setupContentCollections()` function.
+        - Creates symlinks from `src/content/{collection}/` to corresponding directories in `.content/Team-Guidebook/`:
+            - `src/content/people` → `.content/Team-Guidebook/通讯录/`
+            - `src/content/projects` → `.content/Team-Guidebook/图书馆/项目/`
+            - `src/content/library` → `.content/Team-Guidebook/图书馆/`
+            - `src/content/publications` → `.content/Team-Guidebook/图书馆/文献/`
+        - Symlinks are created automatically during `predev` and `prebuild` phases.
+        - Handles edge cases: removes existing files/directories before creating symlinks, detects and handles regular files vs symlinks.
+    - **Content Collections Configuration**:
+        - All collections defined in `src/content/config.ts` using `defineCollection()`.
+        - Collections automatically read from symlinked directories in `src/content/`.
+        - Type-safe access via `getCollection()` API with full TypeScript type inference.
+    - **Testing**:
+        - Created `src/pages/test-collections.astro` to verify Content Collections are working correctly.
+        - Test page displays counts and sample entries from all collections.
+        - Verified data loading: People (1 item), Library (16 items), Projects (0 published items), Publications (0 items).

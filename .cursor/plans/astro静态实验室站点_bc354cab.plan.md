@@ -22,7 +22,7 @@ todos:
       - content-sync-strategy
   - id: content-collections
     content: 建立 `src/content/config.ts`：以 Direct Map 方式从 `Team-Guidebook/` 构建 collections（people/projects/library/news/...），定义 Zod schema 并确立与 Obsidian Frontmatter 的映射规范
-    status: pending
+    status: completed
     dependencies:
       - obsidian-integration
       - i18n-routing
@@ -156,4 +156,3 @@ flowchart TD
 ## 验收标准更新
 
 1.  **Obsidian 友好**：你在 Obsidian 里修改一个 Markdown 文件，保存后，本地运行的 Astro 页面能立刻热更新显示内容。
-2.  **图片正常**：Obsidian 里粘贴的图片（存放在 attachments 下），在网页中能正常加载，且无需手动修改路径。

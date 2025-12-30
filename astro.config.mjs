@@ -20,7 +20,19 @@ const wikiLinkWithLocale = () => {
     /** @type {import('mdast').Root} */ tree,
     /** @type {import('vfile').VFile} */ file
   ) => {
+    // Add safety checks for file object
+    if (!file) {
+      // If file is undefined, return tree unchanged
+      return tree;
+    }
+    
+    // Ensure file.data exists
+    if (!file.data) {
+      file.data = {};
+    }
+    
     const filePath = file?.history?.[0] ?? '';
+    // Safely access nested properties with optional chaining
     const fmLang = file?.data?.astro?.frontmatter?.lang;
     const inferredFromPath = filePath.includes('/en/') ? 'en' : (filePath.includes('/zh/') ? 'zh' : undefined);
     const lang = fmLang || inferredFromPath || 'zh';
@@ -50,12 +62,18 @@ const wikiLinkWithLocale = () => {
       return `/${lang}/library/${normalized}`;
     };
 
-    const linkPlugin = /** @type {any} */ (wikiLink);
-    return linkPlugin({
-      aliasDivider: '|',
-      wikiLinkClassName: 'internal-link',
-      hrefTemplate
-    })(tree, file);
+    try {
+      const linkPlugin = /** @type {any} */ (wikiLink);
+      return linkPlugin({
+        aliasDivider: '|',
+        wikiLinkClassName: 'internal-link',
+        hrefTemplate
+      })(tree, file);
+    } catch (error) {
+      // If plugin fails, return tree unchanged
+      console.warn('wikiLinkWithLocale error:', error);
+      return tree;
+    }
   };
 };
 
@@ -75,7 +93,7 @@ export default defineConfig({
       wikiLinkWithLocale() // Transform [[links]] to /[lang]/library/...
     ],
     rehypePlugins: [
-      remarkDirectiveRehype, // Convert remark directives to rehype nodes
+      remarkDirectiveRehype, // Convert remark directives to rehype nodes (bridge plugin)
       rehypeCallouts // Transform callout directives to styled HTML
     ]
   }

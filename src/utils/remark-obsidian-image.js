@@ -17,6 +17,9 @@ import { visit } from 'unist-util-visit';
  */
 export default function remarkObsidianImage() {
   return (tree, file) => {
+    // Always return the tree, even if we can't process it
+    // The file parameter is optional in unified plugins
+    if (!tree) return tree;
     // We need to visit text nodes and replace ![[...]] patterns
     // But we need to be careful about the index when modifying parent.children
     const replacements = [];
@@ -90,6 +93,9 @@ export default function remarkObsidianImage() {
     replacements.reverse().forEach(({ parent, index, nodes }) => {
       parent.children.splice(index, 1, ...nodes);
     });
+    
+    // Always return the tree to maintain the processing pipeline
+    return tree;
   };
 }
 

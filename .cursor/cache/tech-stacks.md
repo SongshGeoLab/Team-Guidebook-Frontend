@@ -20,8 +20,21 @@
   - Obsidian Daily Notes for News (`Team-Guidebook/档案馆/YYYY-MM-DD.md`)
   - Inline people tags: `#P/<Name>` (resolved via People `aliases`)
 - Parsing & validation:
-  - Astro Content Collections (Zod schema validation + type generation)
-  - `citation-js` (BibTeX -> JSON + formatted citations)
+  - **Astro Content Collections** (Zod schema validation + type generation):
+    - **Schema Definition** (`src/content/config.ts`): Defines Zod schemas for all collections (`people`, `projects`, `news`, `library`, `publications`).
+    - **Direct Map Strategy**: Content Collections read from `src/content/{collection}/` directories, which are symlinked to `.content/Team-Guidebook/` subdirectories via `setup-content.mjs`.
+    - **Type Safety**: Full TypeScript type inference for all collections via `getCollection()` API from `astro:content`.
+    - **Schema Features**:
+      - Handles `null` values gracefully (especially for arrays).
+      - Transforms date strings to Date objects automatically.
+      - Permissive schemas (e.g., Library uses `.passthrough()`) to allow extra fields.
+    - **Collection Mapping**:
+      - `people` → `通讯录/*.md`
+      - `projects` → `图书馆/项目/*.md`
+      - `library` → `图书馆/**/*.md` (excluding `项目/` and `文献/`)
+      - `publications` → `图书馆/文献/*.md`
+      - `news` → `档案馆/YYYY-MM-DD.md` (requires custom loader for bullet extraction)
+  - `citation-js` (BibTeX -> JSON + formatted citations) - *Planned for Phase 2*
   - Obsidian markdown extensions (WikiLinks, Callouts, `![[...]]` attachments) via remark/rehype
     - **`remark-wiki-link`** (v2.0.1): Configured in `astro.config.mjs` to parse `[[WikiLinks]]`.
       - **Locale-Aware Resolution**: Wrapped in `wikiLinkWithLocale()` to infer language from file path or frontmatter.

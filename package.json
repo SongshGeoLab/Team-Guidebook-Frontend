@@ -12,12 +12,14 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/check": "^0.9.6",
     "@tailwindcss/vite": "^4.1.18",
     "astro": "^5.16.6",
     "remark-directive": "^4.0.0",
     "remark-directive-rehype": "^0.4.2",
     "remark-wiki-link": "^2.0.1",
     "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
     "unist-util-visit": "^5.0.0"
   }
 }
