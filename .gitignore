@@ -4,7 +4,6 @@ dist/
 .astro/
 .content/
 .content
-src/content
 public/
 
 # dependencies

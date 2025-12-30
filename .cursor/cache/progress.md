@@ -125,3 +125,33 @@
         - 所有页面已实现并通过前端同事验证。
         - 数据契约与页面范围已对齐。
         - 最小可用的页面联调已完成。
+
+- **News 数据源实现 (Step 7) - 2025-12-30**:
+    - **Custom News Loader** (`src/content/loaders/newsLoader.ts`):
+        - 实现了自定义 Astro Content Loader，用于处理 Obsidian Daily Notes (`Team-Guidebook/档案馆/YYYY-MM-DD.md`)。
+        - **文件扫描**: 使用 `fast-glob` 扫描所有符合 `YYYY-MM-DD.md` 格式的日记文件。
+        - **过滤逻辑**: 仅处理 `publish: true` 且 `draft: false` 的日记文件（显式 opt-in）。
+        - **内容提取**: 从 Markdown 文件中提取 bullet 行（`-` 开头的列表项）作为 news 条目。
+        - **人员关联**: 解析 `#P/<Name>` 标签，通过 People collection 的 `aliases` 字段映射到 Person ID。
+        - **Markdown 转换**: 使用 `marked` 将提取的 bullet 内容转换为 HTML。
+        - **日期处理**: 从文件名（`YYYY-MM-DD.md`）或 frontmatter 中提取日期，确保 `title` 字段正确设置（默认为日期字符串）。
+        - **数据格式**: 返回符合 `newsSchema` 的数据结构，包括 `date`, `title`, `content` (HTML), `related_people`, `tags`。
+    - **Schema 更新** (`src/content/config.ts`):
+        - 在 `newsSchema` 中添加了 `title: z.string().optional()` 字段，确保每个 news 条目都有明确的标题。
+        - 将 `news` collection 从 `type: 'content'` 改为使用 `loader: newsLoader()`。
+    - **Bug 修复**:
+        - **News 列表标题显示问题**: 修复了每个日期后面多出 "0" 的问题，通过显式设置 `title` 字段为日期字符串解决。
+        - **插件工厂函数调用**: 修复了 `remarkObsidianCallouts()` 和 `remarkObsidianImage()` 需要作为工厂函数调用的问题。
+        - **wikiLinkWithLocale 返回问题**: 修复了 `wikiLinkWithLocale()` 函数缺少 `return tree` 语句，导致 markdown 处理流程中断的问题。
+        - **remarkDirectiveRehype 位置**: 确认并修复了 `remarkDirectiveRehype` 必须在 `rehypePlugins` 中（而非 `remarkPlugins`）的问题，因为它是桥接插件，操作 HAST 而非 MDAST。
+        - **hProperties 格式问题**: 修复了两处 `hProperties` 配置问题：
+            - `remark-obsidian-image.js`: 将 `class: 'obsidian-image'` 改为 `className: ['obsidian-image']`（符合 HAST 规范）。
+            - `astro.config.mjs` (wikiLinkWithLocale): 将 `className: 'internal-link'` 改为 `className: ['internal-link']`（保持一致性）。
+    - **技术栈补充**:
+        - 新增依赖: `marked` (v17.0.1) - Markdown 转 HTML
+        - 新增依赖: `gray-matter` (v4.0.3) - Frontmatter 解析
+        - 新增依赖: `fast-glob` (v3.3.3) - 文件模式匹配
+    - **验证状态**:
+        - News loader 已实现并通过测试。
+        - 所有 bug 已修复，lint 错误已解决。
+        - Markdown 处理流程正常工作，Obsidian 语法（WikiLinks, Callouts, Images）正确转换。

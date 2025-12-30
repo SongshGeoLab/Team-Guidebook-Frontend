@@ -38,6 +38,10 @@
       - `publications` → `图书馆/文献/*.md`
       - `news` → `档案馆/YYYY-MM-DD.md` (requires custom loader for bullet extraction)
   - `citation-js` (BibTeX -> JSON + formatted citations) - *Planned for Phase 2*
+  - **Markdown Processing**:
+    - **`marked`** (v17.0.1): Markdown-to-HTML converter. Used by `newsLoader.ts` to convert bullet point content from Daily Notes to HTML.
+    - **`gray-matter`** (v4.0.3): Frontmatter parser. Used by `newsLoader.ts` to extract YAML frontmatter from Daily Notes files.
+    - **`fast-glob`** (v3.3.3): Fast file pattern matching library. Used by `newsLoader.ts` to scan `Team-Guidebook/档案馆/YYYY-MM-DD.md` files.
   - Obsidian markdown extensions (WikiLinks, Callouts, `![[...]]` attachments) via remark/rehype
     - **`remark-wiki-link`** (v2.0.1): Configured in `astro.config.mjs` to parse `[[WikiLinks]]`.
       - **Locale-Aware Resolution**: Wrapped in `wikiLinkWithLocale()` to infer language from file path or frontmatter.

@@ -190,20 +190,21 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - **Redirects**: Static redirect configuration (`redirects: { '/': '/zh/' }`) for root path redirection (compatible with static output mode).
   - **Markdown Processing Pipeline**: Configured with multiple remark/rehype plugins for Obsidian syntax support:
     - **Remark Plugins (executed in order)**:
-      1. **`remarkObsidianCallouts`** (`src/utils/remark-obsidian-callouts.js`): Transforms Obsidian callout syntax `> [!INFO] Title` into directive format `:::info[Title]`.
+      1. **`remarkObsidianCallouts()`** (`src/utils/remark-obsidian-callouts.js`): Factory function that returns a plugin. Transforms Obsidian callout syntax `> [!INFO] Title` into directive format `:::info[Title]`.
       2. **`remarkDirective`**: Parses directive syntax (`:::type[title]...:::`).
-      3. **`remarkObsidianImage`** (`src/utils/remark-obsidian-image.js`): Transforms `![[image.png]]` to standard Markdown image syntax `![](/attachments/image.png)`.
-      4. **`wikiLinkWithLocale()`**: Higher-order function that wraps `remark-wiki-link` to inject locale awareness.
+      3. **`remarkObsidianImage()`** (`src/utils/remark-obsidian-image.js`): Factory function that returns a plugin. Transforms `![[image.png]]` to standard Markdown image syntax `![](/attachments/image.png)`.
+      4. **`[wikiLink, { aliasDivider: '|' }]`**: Parses `[[WikiLinks]]` syntax and creates `wikiLink` nodes.
+      5. **`wikiLinkWithLocale()`**: Standalone transformer plugin that runs *after* `remark-wiki-link` has created `wikiLink` nodes. Visits these nodes to inject locale awareness.
          - **Language Inference**: Tries in order: 1) frontmatter `lang`, 2) file path containing `/en/` or `/zh/`, 3) defaults to `zh`.
-         - **`hrefTemplate` Function**: Maps WikiLink permalinks to URL paths:
+         - **URL Mapping**: Updates `node.data.hProperties.href` with locale-aware paths:
            - Normalizes segments to kebab-case (spaces/underscores → hyphens, lowercase).
            - Supports explicit language prefixes: `[[en/Page]]` → `/en/library/page`, `[[zh/Page]]` → `/zh/library/page`.
            - Default behavior: `[[Page]]` → `/<inferred-lang>/library/page`.
            - Preserves absolute paths (starting with `/`) unchanged.
-         - **Styling Contract**: Sets `wikiLinkClassName: 'internal-link'` to match frontend expectations (see `FRONTEND_GUIDELINES.md`).
-         - **Alias Support**: Handles `[[Page|Display Text]]` via `aliasDivider: '|'`.
+         - **Styling Contract**: Sets `node.data.hProperties.className = ['internal-link']` (HAST-compliant array format) to match frontend expectations (see `FRONTEND_GUIDELINES.md`).
+         - **Important**: Always returns the tree to maintain the processing pipeline (unified/remark requirement).
     - **Rehype Plugins (executed in order)**:
-      1. **`remarkDirectiveRehype`**: Converts remark directive nodes to rehype HTML nodes.
+      1. **`remarkDirectiveRehype`**: **Must be in `rehypePlugins` array, not `remarkPlugins`**. This bridge plugin operates on HAST (HTML AST), not MDAST (Markdown AST). Converts remark directive nodes to rehype HTML nodes. Placing it in `remarkPlugins` would cause it to receive incompatible node types and fail the callout pipeline.
       2. **`rehypeCallouts`** (`src/utils/rehype-callouts.js`): Transforms directive nodes into styled HTML `<aside>` elements with CSS classes.
 
 - **`src/utils/remark-obsidian-callouts.js`**:
@@ -240,7 +241,7 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
     - Creates image node with `/attachments/` prefix and `obsidian-image` CSS class.
     - Replaces text nodes with new nodes (text + image) in reverse order to maintain correct indices.
   - **Path Handling**: Supports nested paths, normalizes to kebab-case segments.
-  - **CSS Class**: Adds `obsidian-image` class to generated image nodes for styling.
+  - **CSS Class**: Adds `className: ['obsidian-image']` to `hProperties` (HAST-compliant array format, not string).
   - **Important**: Always returns the tree to maintain the processing pipeline (unified/remark requirement). The `file` parameter is optional and should not cause early exit.
 
 - **`scripts/setup-content.mjs`**:
@@ -283,7 +284,7 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - **Collection Schemas**:
     - **People**: Maps from `通讯录/*.md`. Required: `id`, `name`, `role`. Optional: `avatar`, `email`, `aliases` (for `#P/<Name>` resolution), `links`, `interests`.
     - **Projects**: Maps from `图书馆/项目/*.md`. Required: `id`, `title`, `start_date`. Optional: `end_date`, `people` (Person IDs), `repo`, `bib_key`.
-    - **News**: Maps from `档案馆/YYYY-MM-DD.md` (Daily Notes). Required: `date`, `content` (HTML). Optional: `related_people` (resolved from `#P/<Name>`). **Note**: Requires custom loader for bullet extraction (TODO).
+    - **News**: Maps from `档案馆/YYYY-MM-DD.md` (Daily Notes). Required: `date`, `title` (optional, defaults to date string), `content` (HTML). Optional: `related_people` (resolved from `#P/<Name>`). **Uses custom loader** (`newsLoader()`) for bullet extraction from Daily Notes.
     - **Library**: Maps from `图书馆/**/*.md` (excluding `项目/` and `文献/`). Very permissive schema using `.passthrough()` to allow extra fields. Optional: `title`, `lang`.
     - **Publications**: Maps from `图书馆/文献/*.md` (Phase 1: markdown-based). Required: `title`, `authors`, `year`. Optional: `venue`, `bib_key`, `doi`, `pdf`, `tags`.
   - **Schema Features**:
@@ -291,6 +292,34 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
     - Transforms date strings to Date objects automatically.
     - Provides TypeScript type inference for all collections via Astro's Content Collections API.
   - **Usage**: Collections are accessed via `getCollection()` from `astro:content` in pages/components.
+
+- **`src/content/loaders/newsLoader.ts`**:
+  - **Purpose**: Custom Astro Content Loader that processes Obsidian Daily Notes into structured News items.
+  - **Input**: Markdown files matching pattern `Team-Guidebook/档案馆/YYYY-MM-DD.md` (Obsidian Daily Notes).
+  - **Filtering Logic**:
+    - Only processes files with `publish: true` in frontmatter (explicit opt-in).
+    - Skips files with `draft: true` in frontmatter.
+    - If `publish` is missing or `false`, the file is ignored.
+  - **Content Extraction**:
+    - Scans all bullet points (lines starting with `-`) in the Markdown body.
+    - Each bullet point becomes a separate news entry.
+    - Uses `marked` to convert Markdown bullet content to HTML.
+  - **People Resolution**:
+    - Parses `#P/<Name>` tags from bullet content using regex.
+    - Loads People collection to build an alias-to-ID mapping.
+    - Resolves person names to Person IDs via the `aliases` field in People schema.
+    - Stores resolved Person IDs in `related_people` array.
+  - **Date Handling**:
+    - Extracts date from filename pattern (`YYYY-MM-DD.md`).
+    - Falls back to frontmatter `date` field if filename doesn't match pattern.
+    - Sets `title` field to date string (e.g., `2025-12-30`) if not provided in frontmatter.
+  - **Content Root Resolution**:
+    - Checks `.content/Team-Guidebook/` first (symlink/clone scenario).
+    - Falls back to `.content/` if it contains `档案馆/` directory.
+    - Final fallback to local `Team-Guidebook/` directory.
+    - Throws error if no content root is found (prompts user to run `npm run setup:content`).
+  - **Output**: Returns array of `NewsItem` objects conforming to `newsSchema` in `config.ts`.
+  - **Dependencies**: Uses `fast-glob` for file pattern matching, `gray-matter` for frontmatter parsing, `marked` for Markdown-to-HTML conversion.
 
 - **`scripts/setup-content.mjs` - Content Collections Setup**:
   - **`setupContentCollections()` Function**:

@@ -5,76 +5,63 @@ import tailwindcss from '@tailwindcss/vite';
 import wikiLink from 'remark-wiki-link';
 import remarkDirective from 'remark-directive';
 import remarkDirectiveRehype from 'remark-directive-rehype';
+import { visit } from 'unist-util-visit';
 import remarkObsidianImage from './src/utils/remark-obsidian-image.js';
 import remarkObsidianCallouts from './src/utils/remark-obsidian-callouts.js';
 import rehypeCallouts from './src/utils/rehype-callouts.js';
 
 /**
- * Wrap remark-wiki-link to inject locale awareness from the Markdown file.
- * It tries, in order:
- * 1) frontmatter `lang`
- * 2) file path containing `/en/` -> en
- * 3) fallback `zh`
+ * Remark plugin to inject locale awareness into WikiLinks.
+ * Assumes 'remark-wiki-link' has already run and created 'wikiLink' nodes.
  */
 const wikiLinkWithLocale = () => {
-  return (
-    /** @type {import('mdast').Root} */ tree,
-    /** @type {import('vfile').VFile} */ file
-  ) => {
-    // Add safety checks for file object
-    if (!file) {
-      // If file is undefined, return tree unchanged
-      return tree;
-    }
-    
-    // Ensure file.data exists
-    if (!file.data) {
-      file.data = {};
-    }
+  return (/** @type {import('mdast').Root} */ tree, /** @type {import('vfile').VFile} */ file) => {
+    // file parameter is optional and should not cause early exit
+    if (!tree) return tree;
     
     const filePath = file?.history?.[0] ?? '';
-    // Safely access nested properties with optional chaining
     const fmLang = file?.data?.astro?.frontmatter?.lang;
     const inferredFromPath = filePath.includes('/en/') ? 'en' : (filePath.includes('/zh/') ? 'zh' : undefined);
     const lang = fmLang || inferredFromPath || 'zh';
 
-    const hrefTemplate = (/** @type {string} */ permalink) => {
-      const normalize = (/** @type {string} */ value) =>
-        value
-          .split('/')
-          .map((/** @type {string} */ segment) =>
-            segment
-              .trim()
-              .replace(/[\s_]+/g, '-')
-              .toLowerCase()
-          )
-          .join('/');
+    const normalize = (/** @type {string} */ value) =>
+      value
+        .split('/')
+        .map((/** @type {string} */ segment) =>
+          segment
+            .trim()
+            .replace(/[\s_]+/g, '-')
+            .toLowerCase()
+        )
+        .join('/');
 
-      if (permalink.startsWith('/')) return permalink;
+    visit(tree, 'wikiLink', (/** @type {any} */ node) => {
+      const permalink = node.data?.permalink || node.value;
+      if (!permalink) return;
 
-      const normalized = normalize(permalink);
-
-      if (normalized.startsWith('en/')) {
-        return `/en/library/${normalized.slice(3)}`;
+      let href;
+      if (permalink.startsWith('/')) {
+        href = permalink;
+      } else {
+        const normalized = normalize(permalink);
+        if (normalized.startsWith('en/')) {
+          href = `/en/library/${normalized.slice(3)}`;
+        } else if (normalized.startsWith('zh/')) {
+          href = `/zh/library/${normalized.slice(3)}`;
+        } else {
+          href = `/${lang}/library/${normalized}`;
+        }
       }
-      if (normalized.startsWith('zh/')) {
-        return `/zh/library/${normalized.slice(3)}`;
-      }
-      return `/${lang}/library/${normalized}`;
-    };
 
-    try {
-      const linkPlugin = /** @type {any} */ (wikiLink);
-      return linkPlugin({
-        aliasDivider: '|',
-        wikiLinkClassName: 'internal-link',
-        hrefTemplate
-      })(tree, file);
-    } catch (error) {
-      // If plugin fails, return tree unchanged
-      console.warn('wikiLinkWithLocale error:', error);
-      return tree;
-    }
+      if (!node.data) node.data = {};
+      if (!node.data.hProperties) node.data.hProperties = {};
+      
+      node.data.hProperties.href = href;
+      node.data.hProperties.className = ['internal-link'];
+    });
+    
+    // Always return the tree to maintain the processing pipeline
+    return tree;
   };
 };
 
@@ -89,13 +76,18 @@ export default defineConfig({
   },
   markdown: {
     remarkPlugins: [
-      remarkObsidianCallouts, // Transform Obsidian callouts (> [!INFO]) to directives
+      remarkObsidianCallouts(), // Transform Obsidian callouts (> [!INFO]) to directives
       remarkDirective, // Parse directives (:::info[...]:::) 
-      remarkObsidianImage, // Transform ![[image.png]] to ![](/attachments/image.png)
-      wikiLinkWithLocale() // Transform [[links]] to /[lang]/library/...
+      remarkObsidianImage(), // Transform ![[image.png]] to ![](/attachments/image.png)
+      [wikiLink, { aliasDivider: '|' }], // Parse [[WikiLinks]] syntax
+      /** @type {any} */ (wikiLinkWithLocale()) // Transform [[links]] hrefs
     ],
     rehypePlugins: [
-      remarkDirectiveRehype, // Convert remark directives to rehype nodes (bridge plugin)
+      // IMPORTANT: remarkDirectiveRehype MUST be in rehypePlugins, not remarkPlugins.
+      // This bridge plugin operates on HAST (HTML AST), not MDAST (Markdown AST).
+      // Placing it in remarkPlugins would cause it to receive incompatible node types
+      // and fail to convert remark directives to HTML nodes, breaking the callout pipeline.
+      /** @type {any} */ (remarkDirectiveRehype), // Convert remark directives to rehype nodes (bridge plugin)
       rehypeCallouts // Transform callout directives to styled HTML
     ]
   }

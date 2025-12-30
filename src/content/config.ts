@@ -1,0 +1,133 @@
+import { defineCollection, z } from 'astro:content';
+import { newsLoader } from './loaders/newsLoader';
+
+/**
+ * Base schema fields shared across multiple collections.
+ */
+const baseSchema = {
+  publish: z.boolean().default(true).describe('Whether this item should be published'),
+  date: z.union([z.date(), z.string()]).optional().transform(val => val ? (typeof val === 'string' ? new Date(val) : val) : undefined).describe('Publication or creation date'),
+  tags: z.union([z.array(z.string()), z.null()]).default([]).transform(val => val || []).describe('Tags for categorization'),
+};
+
+/**
+ * People collection schema.
+ * Maps from: .content/Team-Guidebook/通讯录/ (all .md files)
+ */
+const peopleSchema = z.object({
+  ...baseSchema,
+  id: z.string().describe('Unique identifier (slug)'),
+  name: z.string().describe('Display name'),
+  role: z.string().describe('Role (e.g., "PhD Student", "Professor")'),
+  avatar: z.string().optional().describe('Avatar image path (e.g., "/attachments/avatar.jpg")'),
+  email: z.string().email().optional().describe('Email address'),
+  aliases: z.union([z.array(z.string()), z.null()]).default([]).transform(val => val || []).describe('Alternative names for resolving #P/<Name> tags'),
+  links: z.array(z.object({
+    label: z.string(),
+    url: z.string().url(),
+  })).optional().describe('External links (homepage, GitHub, etc.)'),
+  interests: z.array(z.string()).optional().describe('Research interests'),
+});
+
+/**
+ * Projects collection schema.
+ * Maps from: .content/Team-Guidebook/图书馆/项目/ (all .md files)
+ */
+const projectsSchema = z.object({
+  ...baseSchema,
+  id: z.string().describe('Unique identifier (slug)'),
+  title: z.string().describe('Project title'),
+  start_date: z.union([z.date(), z.string()]).transform(val => typeof val === 'string' ? new Date(val) : val).describe('Project start date'),
+  end_date: z.union([z.date(), z.string()]).optional().transform(val => val ? (typeof val === 'string' ? new Date(val) : val) : undefined).describe('Project end date (empty means "Present")'),
+  people: z.array(z.string()).default([]).describe('Array of Person IDs (must match people collection)'),
+  repo: z.string().url().optional().describe('GitHub repository URL'),
+  bib_key: z.string().optional().describe('BibTeX key for associated publication'),
+});
+
+/**
+ * News collection schema.
+ * Maps from: .content/Team-Guidebook/档案馆/YYYY-MM-DD.md (Daily Notes)
+ * Note: This requires a custom loader to extract bullet items from Daily Notes.
+ */
+const newsSchema = z.object({
+  ...baseSchema,
+  date: z.union([z.date(), z.string()]).transform(val => typeof val === 'string' ? new Date(val) : val).describe('News item date (extracted from filename or frontmatter)'),
+  title: z.string().optional().describe('News item title (defaults to date string)'),
+  content: z.string().describe('HTML content extracted from bullet items'),
+  related_people: z.array(z.string()).default([]).describe('Related Person IDs (resolved from #P/<Name> tags)'),
+});
+
+/**
+ * Library collection schema.
+ * Maps from: .content/Team-Guidebook/图书馆/ (all .md files, excluding 项目/)
+ * This is a wiki-style collection preserving directory structure.
+ * Note: Library files may have minimal frontmatter, so schema is very permissive.
+ */
+const librarySchema = z.object({
+  publish: z.boolean().default(true).describe('Whether this item should be published'),
+  date: z.union([z.date(), z.string()]).optional().transform(val => val ? (typeof val === 'string' ? new Date(val) : val) : undefined).describe('Publication or creation date'),
+  tags: z.union([z.array(z.string()), z.null()]).default([]).transform(val => val || []).describe('Tags for categorization'),
+  title: z.string().optional().describe('Page title (defaults to filename)'),
+  lang: z.enum(['zh', 'en']).optional().describe('Language (inferred from path or frontmatter)'),
+}).passthrough(); // Allow additional fields that don't match schema
+
+/**
+ * Publications collection schema.
+ * Phase 1: Simple markdown-based entries.
+ * Phase 2: Will integrate BibTeX via citation-js.
+ * Maps from: .content/Team-Guidebook/图书馆/文献/ (all .md files, short-term)
+ */
+const publicationsSchema = z.object({
+  ...baseSchema,
+  title: z.string().describe('Publication title'),
+  authors: z.array(z.string()).describe('Author names'),
+  venue: z.string().optional().describe('Publication venue (journal, conference, etc.)'),
+  year: z.number().int().describe('Publication year'),
+  bib_key: z.string().optional().describe('BibTeX key for citation'),
+  doi: z.string().url().optional().describe('DOI URL'),
+  pdf: z.string().optional().describe('PDF file path in attachments'),
+  tags: z.array(z.string()).default([]).describe('Research topic tags for filtering'),
+});
+
+/**
+ * Define all content collections.
+ * 
+ * Note: Content Collections will read from src/content/{collection}/ directories,
+ * which are symlinked to .content/Team-Guidebook/ via setup-content.mjs.
+ * 
+ * For News collection: A custom loader is required to extract bullet items from Daily Notes.
+ * This will be implemented in a separate loader file (see src/content/loaders/news.ts).
+ * 
+ * For Library collection: The symlink points to 图书馆/, but we need to exclude
+ * 项目/ and 文献/ subdirectories. This is handled by filtering in the loader or
+ * by using a more specific symlink structure.
+ */
+export const collections = {
+  people: defineCollection({
+    type: 'content',
+    schema: peopleSchema,
+  }),
+  projects: defineCollection({
+    type: 'content',
+    schema: projectsSchema,
+  }),
+  news: defineCollection({
+    loader: newsLoader(),
+    schema: newsSchema,
+  }),
+  library: defineCollection({
+    type: 'content',
+    schema: librarySchema,
+    // Note: Library symlink points to 图书馆/, which includes 项目/ and 文献/
+    // We need to filter these out. This can be done via:
+    // 1. Custom loader that filters paths
+    // 2. More specific symlink structure (separate symlinks for each subdirectory)
+    // For now, we'll rely on the fact that 项目/ and 文献/ have their own collections
+    // and can be filtered at query time if needed.
+  }),
+  publications: defineCollection({
+    type: 'content',
+    schema: publicationsSchema,
+  }),
+};
+

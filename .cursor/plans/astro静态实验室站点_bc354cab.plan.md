@@ -34,7 +34,7 @@ todos:
       - content-collections
   - id: daily-notes-news
     content: "实现 News 数据源：扫描 `Team-Guidebook/档案馆/YYYY-MM-DD.md`（日记），仅当 `publish: true` 且非 `draft` 才参与抽取；从 bullet 行抽取 news 条目，并解析 `#P/<Name>` 通过 People `aliases` 映射关联人"
-    status: pending
+    status: completed
     dependencies:
       - content-collections
   - id: publications-bib
