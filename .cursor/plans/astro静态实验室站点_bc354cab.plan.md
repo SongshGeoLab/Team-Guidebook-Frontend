@@ -21,13 +21,19 @@ todos:
     dependencies:
       - content-sync-strategy
   - id: content-collections
-    content: 建立 `src/content/config.ts`：定义 news/people/projects/library/publications 的 Zod schema，并确立与 Obsidian Frontmatter 的映射规范
+    content: 建立 `src/content/config.ts`：以 Direct Map 方式从 `Team-Guidebook/` 构建 collections（people/projects/library/news/...），定义 Zod schema 并确立与 Obsidian Frontmatter 的映射规范
     status: pending
     dependencies:
       - obsidian-integration
       - i18n-routing
+  - id: frontend-handoff
+    content: 与前端同事对齐数据契约与页面范围：基于 `FRONTEND_GUIDELINES.md` 明确 collections 字段、路由、空态（/en）、WikiLinks 默认指向 Library、附件 `/attachments/` 访问规则；完成最小可用的页面联调（Home/News/People/Projects/Library）
+    status: pending
+    dependencies:
+      - i18n-routing
+      - content-collections
   - id: daily-notes-news
-    content: "实现 News 数据源：扫描 `Team-Guidebook/档案馆/YYYY-MM-DD.md`（日记），按 `publish: true` 且非 `draft` 过滤；从 bullet 行抽取 news 条目，并解析 `#P/<Name>` 通过 People `aliases` 映射关联人"
+    content: "实现 News 数据源：扫描 `Team-Guidebook/档案馆/YYYY-MM-DD.md`（日记），仅当 `publish: true` 且非 `draft` 才参与抽取；从 bullet 行抽取 news 条目，并解析 `#P/<Name>` 通过 People `aliases` 映射关联人"
     status: pending
     dependencies:
       - content-collections
@@ -84,24 +90,17 @@ flowchart TD
   astroBuild --> dist[静态产物]
 ```
 
-
-
 ## 内容仓库结构建议（适配 Obsidian）
 
-建议在你的 Obsidian 仓库根目录下建立一套“网站导出结构”。其中 News 复用 Obsidian 核心插件“日记”，不单独维护 `lab/news`，结构如下：
+建议以 **Direct Map** 方式复用你现有的 `Team-Guidebook/` 目录结构（不强制迁移到 `lab/zh/en`）。站点栏目是“视图/聚合”，内容仍按 Obsidian 的目录维护：
 
-- `lab/` (主要内容区，按语言分根目录)
-- `zh/`
-    - `people/`: 成员介绍（frontmatter 含 `id`/`aliases` 用于解析 `#P/`）
-    - `projects/`: 项目介绍
-    - `publications/`: 包含 `publications.bib` 与可选 `highlights/`
-- `en/`
-    - `people/`
-    - `projects/`
-    - `publications/`
-- `Team-Guidebook/`: 现有的知识库，直接映射为 Library
-- `Team-Guidebook/档案馆/`: Obsidian 日记（作为 News 数据源，默认不公开，需 `publish: true`）
-- `attachments/`: 图片与附件存放处（支持 `![[...]]` 解析到该目录）
+- Home：`Team-Guidebook/index.md`（或指定入口文档）
+- News：`Team-Guidebook/档案馆/YYYY-MM-DD.md`（Obsidian 日记，按 bullet 抽取；`publish: true` 才公开；`#P/姓名` 关联人）
+- People：`Team-Guidebook/通讯录/*.md`
+- Projects：`Team-Guidebook/图书馆/项目/*.md`
+- Library：`Team-Guidebook/图书馆/**`
+- Blog（可选）：`Team-Guidebook/公告板/博客/*.md`
+- Attachments：保留 `Team-Guidebook/assets/` 与 `Team-Guidebook/图片库/`，构建时同步到站点 `public/attachments/`，统一通过 `/attachments/...` 访问
 
 ## 详细实现步骤更新
 
@@ -112,7 +111,8 @@ flowchart TD
 
 ### 2) 设计路由与 i18n
 
-- 保持原计划：`/zh/...` 和 `/en/...`。
+- 保持 `/zh/...` 和 `/en/...` 的 locale 前缀路由。
+- 阶段 1：内容以中文为主（/en 先做 UI 壳 + 空态占位），后续再补英文内容与中英配对跳转。
 
 ### 3) 内容同步策略（开发 vs 生产）
 
@@ -122,11 +122,11 @@ flowchart TD
 
 ### 4) Obsidian 语法兼容（新增关键步骤）
 
-- **WikiLinks**：集成 `remark-wiki-link`，配置 permalinks 映射，使 `[[My Project]] `能正确跳转到 `/zh/projects/my-project`。
+- **WikiLinks**：集成 `remark-wiki-link`，配置映射规则：`[[...]] `默认解析到 `/<lang>/library/...`（歧义时要求使用路径形式消歧）。
 - **Callouts**：集成 `remark-gh-admonitions` 或类似插件，渲染 Obsidian 的 `> [!INFO]` 语法。
 - **图片/资源路径**：
-    - Obsidian 通常使用相对路径 `![](../../attachments/img.png)` 或简单的 `![[img.png]]`（固定在 `attachments/`）。
-    - 方案：配置 Astro 的 `image()` loader (Astro 5) 或编写 remark 插件，将图片路径解析为 Astro 可处理的 ESM 导入或 public 引用。
+    - Obsidian 可能使用 `Team-Guidebook/assets/`、`Team-Guidebook/图片库/` 等目录，站点统一输出到 `public/attachments/`。
+    - 方案：在构建时同步/copy 资源目录，并用 remark/rehype 将 `![[img.png]] `统一转为 `![](/attachments/img.png)`（冲突需 warning）。
 
 ### 5) Content Collections & Schema
 
@@ -145,7 +145,7 @@ flowchart TD
 
 ### 7) Library (Team-Guidebook)
 
-- 重点在于**目录树生成**。由于 Obsidian 是文件夹嵌套结构，需要递归扫描目录生成侧边栏导航树。
+- 重点在于**目录树生成**。由于 Obsidian 是文件夹嵌套结构，需要递归扫描 `Team-Guidebook/图书馆/**` 生成侧边栏导航树，并让 WikiLinks 默认指向 Library。
 
 ### 8) 评论、搜索、CI/CD
 

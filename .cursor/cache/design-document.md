@@ -17,6 +17,23 @@
 11. Projects 和 Publications，每个实体也都是有一个 markdown 文件，彼此之间可以链接，也都有标签系统方便筛选
 12. 有 assets 系统，允许点击链接可以下载一些文件，比如我们某次演讲的 PPT，比如我们的数据集
 
+## 当前达成的关键约定（实现依据）
+
+1. **内容源与目录适配（Direct Map）**：优先直接复用现有 `Team-Guidebook/` 目录结构，不强制整理为新的 `lab/zh/en` 树。
+   - News：`Team-Guidebook/档案馆/YYYY-MM-DD.md`（Obsidian 日记），按 bullet 抽取；`#P/姓名` 表示关联人。
+   - People：`Team-Guidebook/通讯录/*.md`
+   - Projects：`Team-Guidebook/图书馆/项目/*.md`
+   - Library：`Team-Guidebook/图书馆/**`
+   - Blog（可选）：`Team-Guidebook/公告板/博客/*.md`
+
+2. **双语策略（阶段 1）**：先发布中文内容（`/zh`），英文（`/en`）先做 UI 壳与空态占位，后续再补英文内容与中英配对跳转。
+
+3. **WikiLinks 规则**：`[[...]]` 默认解析到 Library（`/[lang]/library/...`），同名歧义时要求使用路径形式 `[[词条/Git]]` 消歧。
+
+4. **附件策略（A）**：保留内容库现有的 `Team-Guidebook/assets/` 与 `Team-Guidebook/图片库/`，构建时同步到站点 `public/attachments/`，网页统一通过 `/attachments/...` 访问。
+
+5. **评论范围**：默认仅对 News 与论文解读/精选（后续扩展）开放 GitHub 评论（Giscus）。
+
 ## 链接导航
 
 

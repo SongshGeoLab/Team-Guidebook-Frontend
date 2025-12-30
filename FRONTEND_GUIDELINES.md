@@ -7,13 +7,24 @@
 ## 1. 协作模式
 
 *   **后端职责 (我)**:
-    *   维护 `src/content/` 下的内容结构和 `src/content/config.ts` (Schema定义)。
+    *   维护 `src/content/config.ts` (Schema 定义) 与各类 **Content Loaders**（把 Obsidian 内容映射为 collections）。
+    *   采用 **Direct Map**：内容不强制整理为 `lab/zh/en`，而是直接读取 `.content/Team-Guidebook/` 的既有目录结构。
     *   负责 Markdown 的解析配置 (remark/rehype 插件)，确保 WikiLinks (`[[Link]]`) 和 Callouts 能正确转换为 HTML。
     *   提供清洗好的、类型安全的数据集合 (Collections)。
 *   **前端职责 (你)**:
     *   专注于 `src/pages/` (路由逻辑) 和 `src/components/` (UI组件)。
     *   从 `astro:content` 导入数据，不需要关心 Markdown 具体是如何被解析的。
     *   实现多语言 (`zh`/`en`) 布局和交互。
+
+## 1.1 内容源映射 (Direct Map)
+
+内容仓库会在 dev/CI 被放到 `.content/`（软链或 clone）。后端会按如下规则映射到 collections：
+
+- `news`: `.content/Team-Guidebook/档案馆/YYYY-MM-DD.md`（Obsidian 日记，按 bullet 抽取；仅 `publish: true` 才公开）
+- `people`: `.content/Team-Guidebook/通讯录/*.md`
+- `projects`: `.content/Team-Guidebook/图书馆/项目/*.md`
+- `library`: `.content/Team-Guidebook/图书馆/**/*.md`
+- `blog`（可选，阶段 2 才做独立栏目）：`.content/Team-Guidebook/公告板/博客/*.md`
 
 ## 2. 数据接口 (Content Collections API)
 
@@ -66,9 +77,9 @@ interface Project {
 ```typescript
 interface NewsItem {
   date: Date;
-  content: string; // HTML 字符串 (因为是从 Daily Notes 提取的片段)
+  content: string; // HTML string (extracted from Daily Notes bullet items)
   tags: string[];
-  related_people: string[]; // 关联的 Person ID
+  related_people: string[]; // related Person IDs
 }
 ```
 
@@ -100,18 +111,23 @@ interface NewsItem {
 ## 4. 特殊功能说明
 
 ### 4.1 图片与资源
-*   所有静态资源 (图片、PDF) 位于 `public/attachments/`。
+*   所有静态资源 (图片、PDF) 位于 `public/attachments/`（策略 A：从 Obsidian vault 的 `Team-Guidebook/assets/` 与 `Team-Guidebook/图片库/` 同步而来）。
 *   在 Markdown 中引用图片通常是 `![[image.png]]` (Obsidian 格式) 或 `![](/attachments/image.png)`。
 *   **后端承诺**: 会配置 remark 插件将 `![[image.png]]` 自动转换为指向 `/attachments/image.png` 的标准 HTML `<img>` 标签。前端只需处理标准的图片样式。
 
 ### 4.2 内部链接 (WikiLinks)
-*   内容中会出现 `[[slug]]` 格式的链接。
-*   **后端承诺**: 解析为 `<a href="/[lang]/library/slug" class="internal-link">`。
+*   内容中会出现 `[[...]]` 格式的链接（Obsidian WikiLinks）。
+*   **后端承诺**: 默认解析到 Library：`<a href="/[lang]/library/..." class="internal-link">`。
 *   **前端任务**: 为 `.internal-link` 类添加样式 (例如虚线下划线或特定颜色)，以区分普通外部链接。
+
+## 4.3 i18n 范围（阶段 1）
+
+- `/zh`：主站内容完整。
+- `/en`：先提供 UI 壳与空态占位（避免前端做双份内容渲染逻辑），后端会逐步补英文内容源与配对跳转。
 
 ## 5. 开发建议
 
-1.  **Mock Data**: 既然内容库尚未完全填充，请在 `src/content/people/` 下创建 `dummy-person.md` 等假数据进行 UI 调试。
+1.  **Mock Data**: 既然内容库尚未完全填充，请在 `.content/Team-Guidebook/通讯录/` 或 `.content/Team-Guidebook/图书馆/项目/` 下创建少量 `dummy-*.md` 进行 UI 调试（或在代码仓库提供 fixtures，二选一）。
 2.  **样式框架**: 使用 Tailwind CSS v4。
 3.  **图标库**: 推荐使用 `lucide-react` 或 `lucide-astro`。
 

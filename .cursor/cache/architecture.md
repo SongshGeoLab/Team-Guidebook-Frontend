@@ -2,29 +2,43 @@
 
 ### 1) Repository Layout
 
-- `lab/`
-  - `zh/`
-    - `people/`
-    - `projects/`
-    - `publications/`
-  - `en/`
-    - `people/`
-    - `projects/`
-    - `publications/`
-- `Team-Guidebook/` (mapped to Library)
-- `Team-Guidebook/档案馆/` (Obsidian Daily Notes; mapped to News)
-- `attachments/` (all media and downloadable files)
+- `src/`
+  - `content/`: Astro Content Collections definitions (`config.ts`) and custom loaders.
+  - `pages/`: File-based routing (e.g., `/[lang]/...`).
+  - `layouts/`: Shared layouts (e.g., `BaseLayout.astro`).
+  - `components/`: UI components.
+- `public/attachments/`: Static assets synced from the Obsidian vault (see Attachments section).
+- `.content/` (gitignored): Symlink/clone target directory for Obsidian content in dev/CI.
+
+**Direct-map Content Source (Obsidian Vault)**
+
+The website content is **not** required to be rearranged into a new `lab/{lang}` tree. Instead, we directly map existing `Team-Guidebook/` structure:
+
+- `Team-Guidebook/图书馆/**` -> Library
+- `Team-Guidebook/图书馆/项目/*.md` -> Projects
+- `Team-Guidebook/通讯录/*.md` -> People
+- `Team-Guidebook/档案馆/YYYY-MM-DD.md` -> News (Daily Notes, bullet extraction)
+- `Team-Guidebook/公告板/博客/*.md` -> Blog (optional)
+- `Team-Guidebook/图书馆/文献/*.md` -> Publications (short-term, optional)
 
 ### 2) URL & Slug Rules
 
-- A lab content note's URL is derived from its path relative to `lab/{lang}/`.
-  - Example: `lab/zh/people/Alice_Wang.md` -> `/zh/people/alice-wang`
-- Slug generation:
-  - Use the file stem (filename without extension).
-  - Normalize to `kebab-case`.
-- Collision rule:
-  - Full relative path must be unique.
-  - Same filename under different folders is allowed.
+- Default language is `zh`. `en` route exists as UI shell and will be filled gradually.
+- Core routes:
+  - `/zh` and `/en`: localized landing pages
+  - `/[lang]/news`: News timeline (from Daily Notes)
+  - `/[lang]/people`: People index and detail pages (from `通讯录/`)
+  - `/[lang]/projects`: Projects index and detail pages (from `图书馆/项目/`)
+  - `/[lang]/library/...`: Library wiki pages (from `图书馆/**`)
+
+**Slug rules (for People/Projects)**
+- Use the file stem (filename without extension) as the canonical slug.
+- Normalize to `kebab-case`.
+- Collision rule: slugs must be unique **within their own collection** (people/projects).
+
+**Library path rules**
+- Library pages preserve their relative path within `Team-Guidebook/图书馆/`.
+- The URL path is a normalized variant of the relative path (kebab-case per segment).
 
 ### 3) Publish Rules
 
@@ -35,33 +49,43 @@
 
 ### 4) Obsidian WikiLinks Rules
 
-- Internal links:
-  - `[[Some_Page]]` resolves by file name within the same language tree first.
-  - If ambiguous, require explicit path-like link: `[[people/Some_Page]]`.
+- Internal links (WikiLinks) default to **Library**:
+  - `[[Some_Page]]` resolves to `/<lang>/library/...` (not People/Projects).
+  - Prefer path-like links to avoid ambiguity: `[[词条/Git]]`, `[[专栏/Python4Science/Week1_导论]]`.
 - Aliases:
   - `[[Some_Page|Display Text]]` is supported.
+- Ambiguity handling:
+  - If `[[Some_Page]]` matches multiple library pages, keep build **non-failing** but emit a warning and require content author to disambiguate with a path-like link.
 - Embeds (attachments only):
-  - `![[image.png]]` resolves only within `attachments/`.
+  - `![[image.png]]` resolves only within synced attachment roots (see Attachments section).
   - If not found, keep as plain text (do not break build).
 
 ### 5) Attachments
 
-- All attachments live in `attachments/`.
-- Recommended naming:
-  - Prefer globally unique names, e.g. `2025-12-30-lab-group-photo.jpg`.
-- Supported usages:
-  - Standard Markdown: `![](/attachments/xxx.png)`
-  - Obsidian embed: `![[xxx.png]]` (resolved to `/attachments/xxx.png`)
-- Large files:
-  - Allowed; will be served as static downloads.
+We adopt **strategy A**: keep existing vault asset folders, but expose a single public mount point.
 
-### 6) i18n Content Pairing (Recommended)
+**Source folders in the vault (current)**
+- `Team-Guidebook/assets/`
+- `Team-Guidebook/图片库/`
 
-- Each language has its own tree: `lab/zh/...` and `lab/en/...`.
-- To pair translations, add a stable id:
-  - `id: <stable-id>` on each page, and/or
-  - `translation_of: <stable-id>` to link a translated page to the canonical one.
-- Language switch should try to jump to the paired page; if missing, fallback to the section index.
+**Website public output**
+- During build/dev, sync/copy the above folders into:
+  - `public/attachments/`
+
+**Supported usages**
+- Standard Markdown (preferred): `![](/attachments/xxx.png)`
+- Obsidian embed: `![[xxx.png]]` (resolved to `/attachments/xxx.png`)
+
+**Name collision rule**
+- If multiple files share the same filename across source folders, the build must warn and prefer one deterministic resolution (or require renaming).
+
+### 6) i18n Strategy (Phase 1)
+
+- Phase 1 ships with **Chinese content** as primary.
+- `/en` exists as UI shell:
+  - show translated UI chrome and allow navigation
+  - content pages can show empty state / "Coming soon" until translations exist
+- Future: introduce mirrored English content tree (e.g., `Team-Guidebook-en/` or `lab/en/`) and translation pairing.
 
 ### 7) Project Structure & Role Explanations
 
@@ -120,26 +144,36 @@ Since source content comes from non-standard structures (Daily Notes, BibTeX), c
     - **Input**: `Team-Guidebook/档案馆/*.md`
     - **Logic**:
       - Read file content.
-      - Parse frontmatter to check `publish: true`.
+      - Parse frontmatter to check `publish: true` (explicit opt-in; if missing, treat as not published).
       - Iterate through list items (bullet points).
       - Regex match `#P/<Name>` to extract related people.
       - Construct `NewsItem` object: `{ date, content (html), related_people, tags }`.
     - **Output**: A virtual `news` collection.
 
-2.  **BibTeX Loader (Publications)**:
-    - **Input**: `lab/{lang}/publications/*.bib`
-    - **Library**: Use `citation-js` or similar.
+2.  **People Loader (Address Book)**:
+    - **Input**: `Team-Guidebook/通讯录/*.md`
     - **Logic**:
-      - Parse `.bib` file into JSON.
-      - Generate a unique ID for each entry (e.g., citation key).
-    - **Output**: A virtual `publications` collection exposed as JSON objects to the frontend.
+      - Parse frontmatter with `id` (slug) and `aliases` (used for resolving `#P/<Name>` in Daily Notes).
+    - **Output**: `people` collection.
+
+3.  **Projects Loader**:
+    - **Input**: `Team-Guidebook/图书馆/项目/*.md`
+    - **Output**: `projects` collection.
+
+4.  **Library Loader (Wiki)**:
+    - **Input**: `Team-Guidebook/图书馆/**/*.md`
+    - **Output**: `library` collection (path-preserving).
+
+5.  **Publications (Future BibTeX Loader)**:
+    - Phase 1 can render `Team-Guidebook/图书馆/文献/*.md` as library-like pages.
+    - Phase 2 introduces BibTeX (`.bib`) + `citation-js` for structured filtering page.
 
 #### Markdown Processing Pipeline (`astro.config.mjs`)
 To support Obsidian-specific syntax, the remark/rehype pipeline must be configured:
 
 - **WikiLinks (`[[...]]`)**:
   - Use `remark-wiki-link`.
-  - **Resolution**: Map `[[slug]]` to `/[lang]/library/[slug]`.
+  - **Resolution**: Map `[[...]]` to `/[lang]/library/...` with disambiguation rules (path-like preferred).
   - **Styling**: Add class `.internal-link` for frontend styling.
 - **Callouts (`> [!info]`)**:
   - Use `remark-gh-admonitions` or `remark-directive` to transform into semantic HTML `<aside>` or `<div>` with classes (e.g., `.admonition.info`).
