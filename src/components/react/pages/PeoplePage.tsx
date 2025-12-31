@@ -96,3 +96,4 @@ export function PeoplePage({ lang, people }: PeoplePageProps) {
   );
 }
 
+

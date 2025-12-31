@@ -140,3 +140,4 @@ export function HomePage({ lang, news, projects }: HomePageProps) {
   );
 }
 
+

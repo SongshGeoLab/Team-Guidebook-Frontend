@@ -92,3 +92,4 @@ export function ProjectsPage({ lang, projects, people = [] }: ProjectsPageProps)
   );
 }
 
+

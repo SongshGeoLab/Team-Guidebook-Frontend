@@ -194,3 +194,4 @@ export default function RippleBackground({ imageUrl = '/background.jpg' }: { ima
   );
 }
 
+

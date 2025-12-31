@@ -51,3 +51,4 @@ export function NewsPage({ lang, news }: NewsPageProps) {
   );
 }
 
+

@@ -152,5 +152,3 @@ flowchart TD
 ### 8) 评论、搜索、CI/CD
 
 - 保持原计划（Giscus, Pagefind, GitHub Actions）。
-
-## 验收标准更新
