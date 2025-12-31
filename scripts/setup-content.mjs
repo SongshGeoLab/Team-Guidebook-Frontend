@@ -24,6 +24,14 @@ const fallback = path.resolve(cwd, 'Team-Guidebook');
 const log = (message) => console.log(`[content] ${message}`);
 const error = (message) => console.error(`[content] ${message}`);
 
+// Log script execution start
+log('='.repeat(60));
+log('Content setup script started');
+log(`Node version: ${process.version}`);
+log(`Working directory: ${cwd}`);
+log(`CI environment: ${process.env.CI || process.env.VERCEL || 'false'}`);
+log('='.repeat(60));
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const exists = (p) => {
@@ -252,6 +260,11 @@ const setupContentCollections = async (contentRoot) => {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
+    // Determine if we should use symlink or copy
+    // In CI/Vercel environments, copying is safer to avoid symlink resolution issues with Astro's glob loader
+    const isCI = process.env.CI || process.env.VERCEL || process.env.NETLIFY;
+    const useCopy = isCI;
+
     // Remove existing symlink or directory
     // CRITICAL: Must remove before creating new symlink, especially in CI environments
     // Always check and remove, even if it seems like it shouldn't exist
@@ -264,7 +277,7 @@ const setupContentCollections = async (contentRoot) => {
           const resolvedExisting = path.isAbsolute(existingTarget) 
             ? existingTarget 
             : path.resolve(path.dirname(target), existingTarget);
-          if (resolvedExisting === source) {
+          if (resolvedExisting === source && !useCopy) {
             log(`Reusing existing symlink: ${collectionName} -> ${sourcePath}`);
             // Verify the symlink actually works
             try {
@@ -275,7 +288,7 @@ const setupContentCollections = async (contentRoot) => {
               log(`  Warning: symlink exists but is broken (${verifyErr.message}), will recreate`);
             }
           } else {
-            log(`Removing existing symlink with different target: ${existingTarget}`);
+            log(`Removing existing symlink with different target or switching to copy mode: ${existingTarget}`);
           }
         } else {
           log(`Removing existing directory/file: ${target} (isDirectory: ${stat.isDirectory()}, isFile: ${stat.isFile()})`);
@@ -349,14 +362,27 @@ const setupContentCollections = async (contentRoot) => {
     }
 
     try {
-      // Use absolute path for symlink to avoid issues in build environments
-      fs.symlinkSync(source, target, 'dir');
-      log(`✓ Linked ${collectionName} collection: ${target} -> ${sourcePath}`);
+      if (useCopy) {
+        log(`CI environment detected, copying ${collectionName} collection instead of symlink...`);
+        fs.cpSync(source, target, { recursive: true });
+        log(`✓ Copied ${collectionName} collection: ${target} <- ${sourcePath}`);
+      } else {
+        // Use absolute path for symlink to avoid issues in build environments
+        fs.symlinkSync(source, target, 'dir');
+        log(`✓ Linked ${collectionName} collection: ${target} -> ${sourcePath}`);
+      }
       
-      // Verify the symlink was created correctly and is accessible
+      // Verify the operation was successful
       if (exists(target)) {
         const stat = fs.lstatSync(target);
-        if (stat.isSymbolicLink()) {
+        if (useCopy) {
+           if (stat.isDirectory()) {
+             const copiedFiles = fs.readdirSync(target);
+             log(`  ✓ Copy verified: ${copiedFiles.length} items`);
+           } else {
+             error(`  Warning: Target exists but is not a directory (copy failed?)`);
+           }
+        } else if (stat.isSymbolicLink()) {
           const actualTarget = fs.readlinkSync(target);
           log(`  Verified: symlink points to ${actualTarget}`);
           
@@ -376,15 +402,15 @@ const setupContentCollections = async (contentRoot) => {
           error(`  Warning: ${target} exists but is not a symlink`);
         }
       } else {
-        error(`  ERROR: Symlink creation reported success but target does not exist`);
+        error(`  ERROR: Operation reported success but target does not exist`);
       }
     } catch (err) {
-      error(`Failed to create symlink for ${collectionName}: ${err.message}`);
+      error(`Failed to create symlink/copy for ${collectionName}: ${err.message}`);
       error(`  Source: ${source}`);
       error(`  Target: ${target}`);
       
       // If symlink fails, try copying as fallback (especially for CI environments)
-      if (err.code === 'EEXIST' || err.code === 'EACCES' || err.code === 'EPERM') {
+      if (!useCopy && (err.code === 'EEXIST' || err.code === 'EACCES' || err.code === 'EPERM')) {
         log(`  Attempting to copy instead of symlink (CI environment compatibility)...`);
         try {
           // CRITICAL: Force remove target first, regardless of type
