@@ -1,6 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { LibrarySidebar } from '../../../components/react/ui/LibrarySidebar';
+import { buildLibraryTree } from '../../../utils/libraryTree';
 
 export async function getStaticPaths() {
   const library = await getCollection('library', ({ data }) => data.publish !== false);
@@ -41,12 +43,51 @@ export async function getStaticPaths() {
 const { item } = Astro.props;
 const { Content } = await item.render();
 const title = item.data.title || item.id.split('/').pop()?.replace(/\.md$/, '') || item.id;
+
+// Build slug from item.id
+const pathParts = item.id.split('/').filter(part => part);
+const slugParts = pathParts.map((part, index) => {
+  if (index === pathParts.length - 1) {
+    return part.replace(/\.md$/, '');
+  }
+  return part;
+});
+if (slugParts[0] === '图书馆') {
+  slugParts.shift();
+}
+const currentSlug = slugParts.join('/');
+
+// Get all library items for sidebar
+const allLibrary = await getCollection('library', ({ data }) => data.publish !== false);
+const libraryItems = allLibrary.map((libItem) => {
+  const parts = libItem.id
+    .replace(/\.md$/, '')
+    .split('/')
+    .filter((p) => p && p !== '图书馆');
+  const slug = parts.join('/');
+  return {
+    id: libItem.id,
+    slug,
+    title: libItem.data.title || parts[parts.length - 1] || libItem.id,
+  };
+});
+
+const tree = buildLibraryTree(libraryItems);
 ---
 
 <BaseLayout title={title} description={title} lang="zh">
-  <article class="prose dark:prose-invert max-w-none">
-    <h1>{title}</h1>
-    <Content />
-  </article>
+  <div class="flex flex-col lg:flex-row gap-8">
+    <LibrarySidebar 
+      client:load 
+      tree={tree} 
+      currentSlug={currentSlug} 
+      lang="zh" 
+      basePath="/zh/library"
+    />
+    <article class="flex-1 prose dark:prose-invert max-w-none min-w-0">
+      <h1>{title}</h1>
+      <Content />
+    </article>
+  </div>
 </BaseLayout>
 

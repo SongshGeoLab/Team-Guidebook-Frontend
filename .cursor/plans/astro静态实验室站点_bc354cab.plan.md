@@ -44,7 +44,7 @@ todos:
       - content-collections
   - id: library-render
     content: 实现 Library 文档站渲染：保留 Obsidian 目录树结构作为侧边栏导航，处理 Markdown 内的静态资源引用
-    status: pending
+    status: completed
     dependencies:
       - content-collections
   - id: comments

@@ -136,6 +136,16 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - **`NewsTimeline.tsx`**: 新闻时间轴组件，展示带时间线的新闻列表。
   - **`NewsCalendar.tsx`**: 新闻日历组件，按月份分组展示新闻。
   - **`CitationItem.tsx`**: 引用项组件，展示出版物信息，支持 BibTeX 复制和 PDF 下载。
+  - **`LibrarySidebar.tsx`**: Library 侧边栏导航组件，展示目录树结构。
+    - **功能**: 折叠/展开目录、高亮当前页面、自动展开到当前路径。
+    - **数据结构**: 接收 `TreeNode` 树形结构（由 `buildLibraryTree()` 生成）。
+    - **交互**: 点击目录节点展开/折叠，点击文件节点跳转到对应页面。
+    - **响应式**: 桌面端固定在左侧（`w-64`），移动端在上方（`w-full`）。
+    - **状态管理**: 使用 `useState` 管理展开状态，`useEffect` 根据当前 slug 自动展开所有父路径。
+    - **视觉设计**: 
+      - 使用 `Folder`/`FolderOpen` 图标表示目录，`FileText` 图标表示文件。
+      - 当前页面使用 `bg-teal-500/20` 背景和左侧边框高亮。
+      - 支持滚动，最大高度限制为 `calc(100vh-12rem)`。
 
 - **`src/components/react/types.ts`**:
   - 定义所有 React 组件使用的 TypeScript 类型接口。
@@ -156,6 +166,9 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
   - **People 详情页** (`/[lang]/people/[slug].astro`): 使用 `getStaticPaths()` 生成所有成员的路由，渲染成员详情。
   - **Projects 详情页** (`/[lang]/projects/[slug].astro`): 使用 `getStaticPaths()` 生成所有项目的路由，渲染项目详情。
   - **Library 详情页** (`/[lang]/library/[...slug].astro`): 使用 `getStaticPaths()` 生成所有知识库页面的路由，支持任意深度的路径。
+    - **侧边栏集成**: 在页面中获取所有 library items，使用 `buildLibraryTree()` 构建目录树，传递给 `LibrarySidebar` 组件。
+    - **布局**: 使用 flexbox 布局，侧边栏固定在左侧（桌面端），内容区域自适应宽度。
+    - **响应式**: 移动端侧边栏在上方，内容在下方（`flex-col lg:flex-row`）。
 
 - **Root Redirect**:
   - **Implementation**: Configured in `astro.config.mjs` via `redirects: { '/': '/zh/' }`.
@@ -320,6 +333,44 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
     - Throws error if no content root is found (prompts user to run `npm run setup:content`).
   - **Output**: Returns array of `NewsItem` objects conforming to `newsSchema` in `config.ts`.
   - **Dependencies**: Uses `fast-glob` for file pattern matching, `gray-matter` for frontmatter parsing, `marked` for Markdown-to-HTML conversion.
+
+- **`src/utils/libraryTree.ts`**:
+  - **Purpose**: Utility functions for building and traversing Library navigation tree structure.
+  - **`buildLibraryTree()` Function**: 
+    - Takes an array of library items (with `id`, `slug`, `title`) and builds a hierarchical tree structure.
+    - Preserves Obsidian directory structure by parsing slug paths (e.g., `词条/Git` → `词条/` directory containing `Git` file).
+    - Automatically sorts children: directories first, then files, both alphabetically (with numeric sorting support).
+    - Returns root `TreeNode` with nested structure.
+  - **`TreeNode` Interface**: 
+    - `name`: Node name (directory or file name without path).
+    - `slug`: Full slug path (e.g., `词条/Git`).
+    - `fullPath`: Same as slug (for compatibility).
+    - `children`: Array of child nodes.
+    - `isFile`: Boolean indicating if this is a file node.
+    - `title`: Optional display title (from frontmatter).
+  - **Helper Functions**:
+    - `findNodeBySlug()`: Recursively finds a node by slug in the tree.
+    - `getPathToNode()`: Returns breadcrumb path (array of nodes) from root to target node.
+  - **Usage**: Used by Library detail pages to build sidebar navigation tree from all library items.
+
+- **`src/utils/libraryTree.ts`**:
+  - **Purpose**: Utility functions for building and traversing Library navigation tree structure.
+  - **`buildLibraryTree()` Function**: 
+    - Takes an array of library items (with `id`, `slug`, `title`) and builds a hierarchical tree structure.
+    - Preserves Obsidian directory structure by parsing slug paths (e.g., `词条/Git` → `词条/` directory containing `Git` file).
+    - Automatically sorts children: directories first, then files, both alphabetically (with numeric sorting support).
+    - Returns root `TreeNode` with nested structure.
+  - **`TreeNode` Interface**: 
+    - `name`: Node name (directory or file name without path).
+    - `slug`: Full slug path (e.g., `词条/Git`).
+    - `fullPath`: Same as slug (for compatibility).
+    - `children`: Array of child nodes.
+    - `isFile`: Boolean indicating if this is a file node.
+    - `title`: Optional display title (from frontmatter).
+  - **Helper Functions**:
+    - `findNodeBySlug()`: Recursively finds a node by slug in the tree.
+    - `getPathToNode()`: Returns breadcrumb path (array of nodes) from root to target node.
+  - **Usage**: Used by Library detail pages to build sidebar navigation tree from all library items.
 
 - **`src/content/loaders/publicationsLoader.ts`**:
   - **Purpose**: Custom Astro Content Loader that processes BibTeX files (`.bib`) into structured Publications items.
