@@ -14,6 +14,35 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Load .env file if it exists (simple parser)
+const loadEnvFile = () => {
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf-8');
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const equalIndex = trimmed.indexOf('=');
+      if (equalIndex > 0) {
+        const key = trimmed.substring(0, equalIndex).trim();
+        let value = trimmed.substring(equalIndex + 1).trim();
+        // Remove quotes
+        if ((value.startsWith('"') && value.endsWith('"')) || 
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        // Only set if not already in process.env
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  }
+};
+
+// Load .env before reading environment variables
+loadEnvFile();
+
 const cwd = process.cwd();
 const dest = path.resolve(cwd, '.content');
 const envContentDir = process.env.CONTENT_DIR;
@@ -30,6 +59,14 @@ log('Content setup script started');
 log(`Node version: ${process.version}`);
 log(`Working directory: ${cwd}`);
 log(`CI environment: ${process.env.CI || process.env.VERCEL || 'false'}`);
+const envPath = path.resolve(cwd, '.env');
+if (fs.existsSync(envPath)) {
+  log(`✓ Found .env file`);
+} else {
+  log(`⚠ No .env file found`);
+}
+log(`CONTENT_REPO_URL: ${repoUrl || '(not set)'}`);
+log(`CONTENT_DIR: ${envContentDir || '(not set)'}`);
 log('='.repeat(60));
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
