@@ -4,6 +4,12 @@ dist/
 .astro/
 .content/
 .content
+# Content Collections symlinks/copies (should not be committed)
+# These are created by setup-content.mjs and point to .content/Team-Guidebook/
+src/content/people/
+src/content/projects/
+src/content/library/
+src/content/publications/
 # Note: public/ should NOT be ignored - it contains static assets like background.jpg
 # Only ignore generated content in public/attachments/ (synced from content repo)
 public/attachments/

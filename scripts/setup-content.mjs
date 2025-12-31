@@ -364,6 +364,46 @@ const setupContentCollections = async (contentRoot) => {
     try {
       if (useCopy) {
         log(`CI environment detected, copying ${collectionName} collection instead of symlink...`);
+        // CRITICAL: In CI mode, ensure target is completely removed before copying
+        // fs.cpSync cannot overwrite non-directories, so we must remove first
+        if (exists(target)) {
+          log(`  Removing existing target before copy: ${target}`);
+          try {
+            const targetStat = fs.lstatSync(target);
+            if (targetStat.isSymbolicLink()) {
+              fs.unlinkSync(target);
+            } else if (targetStat.isDirectory()) {
+              fs.rmSync(target, { recursive: true, force: true });
+            } else if (targetStat.isFile()) {
+              fs.unlinkSync(target);
+            } else {
+              // Unknown type, try both
+              try {
+                fs.unlinkSync(target);
+              } catch {
+                fs.rmSync(target, { recursive: true, force: true });
+              }
+            }
+            // Wait a bit to ensure filesystem has processed the removal
+            await sleep(50);
+            // Verify removal
+            if (exists(target)) {
+              error(`  ERROR: Target still exists after removal, forcing recursive removal...`);
+              fs.rmSync(target, { recursive: true, force: true, maxRetries: 3 });
+              await sleep(100);
+            }
+          } catch (rmErr) {
+            error(`  Warning: Failed to remove existing target: ${rmErr.message}`);
+            error(`  Attempting force removal...`);
+            try {
+              fs.rmSync(target, { recursive: true, force: true, maxRetries: 3 });
+              await sleep(100);
+            } catch (forceRmErr) {
+              error(`  ERROR: Force removal also failed: ${forceRmErr.message}`);
+              throw new Error(`Cannot remove ${target} before copy: ${forceRmErr.message}`);
+            }
+          }
+        }
         fs.cpSync(source, target, { recursive: true });
         log(`✓ Copied ${collectionName} collection: ${target} <- ${sourcePath}`);
       } else {
