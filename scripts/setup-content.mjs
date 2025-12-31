@@ -244,6 +244,14 @@ const setupContentCollections = async (contentRoot) => {
       return;
     }
 
+    // Ensure parent directory exists for the target symlink
+    // This is crucial for deeply nested paths or fresh builds
+    const targetDir = path.dirname(target);
+    if (!exists(targetDir)) {
+      log(`Creating parent directory for ${collectionName}: ${targetDir}`);
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
     // Remove existing symlink or directory
     // CRITICAL: Must remove before creating new symlink, especially in CI environments
     // Always check and remove, even if it seems like it shouldn't exist
