@@ -180,7 +180,7 @@ const syncAttachments = (contentRoot) => {
  * Setup symlinks in src/content/ to map Content Collections to .content/Team-Guidebook/
  * This enables Direct Map strategy: Content Collections read from Obsidian vault structure.
  */
-const setupContentCollections = (contentRoot) => {
+const setupContentCollections = async (contentRoot) => {
   const teamGuidebookPath = getTeamGuidebookPath(contentRoot);
   const contentDir = path.resolve(cwd, 'src', 'content');
 
