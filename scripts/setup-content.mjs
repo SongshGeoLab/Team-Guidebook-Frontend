@@ -24,6 +24,8 @@ const fallback = path.resolve(cwd, 'Team-Guidebook');
 const log = (message) => console.log(`[content] ${message}`);
 const error = (message) => console.error(`[content] ${message}`);
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const exists = (p) => {
   try {
     fs.accessSync(p);
@@ -49,27 +51,38 @@ const resolveSource = () => {
 };
 
 const cleanDest = (source) => {
-  if (exists(dest)) {
+  // Use lstat to check if path exists (valid or broken symlink)
+  let stat;
+  try {
+    stat = fs.lstatSync(dest);
+  } catch (e) {
+    // Path does not exist
+    return true;
+  }
+
+  // If we have a source and it's a symlink pointing to that source, keep it
+  if (stat.isSymbolicLink()) {
     try {
-      const stat = fs.lstatSync(dest);
-      if (stat.isSymbolicLink()) {
-        const target = fs.readlinkSync(dest);
-        if (source && path.resolve(cwd, target) === source) {
-          log(`Reusing existing symlink -> ${source}`);
-          return false;
-        }
-      } else if (stat.isFile()) {
-        // .content is a regular file (shouldn't be committed, but handle it)
-        log(`Removing regular file ${dest} (should be a symlink)`);
-      } else if (stat.isDirectory()) {
-        // .content is a directory (shouldn't happen, but handle it)
-        log(`Removing directory ${dest} (should be a symlink)`);
+      const target = fs.readlinkSync(dest);
+      if (source && path.resolve(cwd, target) === source) {
+        log(`Reusing existing symlink -> ${source}`);
+        return false;
       }
-    } catch {
-      // fall through to removal
+    } catch (e) {
+      // Broken link or readlink failed, proceed to remove
     }
-    // Remove file, directory, or symlink
+  } else if (stat.isFile()) {
+    log(`Removing regular file ${dest} (should be a symlink)`);
+  } else if (stat.isDirectory()) {
+    log(`Removing directory ${dest} (should be a symlink)`);
+  }
+
+  // Remove file, directory, or symlink
+  try {
     fs.rmSync(dest, { recursive: true, force: true });
+  } catch (e) {
+    error(`Failed to remove ${dest}: ${e.message}`);
+    // Try to continue anyway, maybe it was removed by another process
   }
   return true;
 };
@@ -182,6 +195,19 @@ const syncAttachments = (contentRoot) => {
  */
 const setupContentCollections = async (contentRoot) => {
   const teamGuidebookPath = getTeamGuidebookPath(contentRoot);
+  
+  log(`Resolved Team-Guidebook path: ${teamGuidebookPath}`);
+  try {
+    if (exists(teamGuidebookPath)) {
+      const contents = fs.readdirSync(teamGuidebookPath);
+      log(`Directory structure at resolved path: ${contents.join(', ')}`);
+    } else {
+      error(`Resolved path does not exist!`);
+    }
+  } catch (e) {
+    error(`Could not list resolved path: ${e.message}`);
+  }
+
   const contentDir = path.resolve(cwd, 'src', 'content');
 
   // Ensure src/content exists
