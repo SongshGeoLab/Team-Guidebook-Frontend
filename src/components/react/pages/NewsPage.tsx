@@ -7,10 +7,30 @@ import { Calendar as CalendarIcon, List } from 'lucide-react';
 interface NewsPageProps {
   lang: 'zh' | 'en';
   news: NewsItem[];
+  /**
+   * Giscus configuration for comments
+   * If not provided, comments will be disabled
+   */
+  giscusConfig?: {
+    repo: string;
+    repoId: string;
+    category: string;
+    categoryId: string;
+    lang?: string;
+    theme?: string;
+  };
 }
 
-export function NewsPage({ lang, news }: NewsPageProps) {
+export function NewsPage({ lang, news, giscusConfig }: NewsPageProps) {
   const [view, setView] = useState<'timeline' | 'calendar'>('timeline');
+
+  // Merge lang into giscus config if provided
+  const finalGiscusConfig = giscusConfig
+    ? {
+        ...giscusConfig,
+        lang: giscusConfig.lang || lang
+      }
+    : undefined;
 
   return (
     <div className="space-y-12">
@@ -46,7 +66,11 @@ export function NewsPage({ lang, news }: NewsPageProps) {
         </div>
       </div>
 
-      {view === 'timeline' ? <NewsTimeline items={news} /> : <NewsCalendar items={news} />}
+      {view === 'timeline' ? (
+        <NewsTimeline items={news} giscusConfig={finalGiscusConfig} />
+      ) : (
+        <NewsCalendar items={news} />
+      )}
     </div>
   );
 }

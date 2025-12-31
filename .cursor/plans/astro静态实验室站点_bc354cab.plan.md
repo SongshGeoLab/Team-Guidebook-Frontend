@@ -49,7 +49,7 @@ todos:
       - content-collections
   - id: comments
     content: 集成 GitHub 评论（优先 giscus，可替换 utterances）并嵌入到内容页
-    status: pending
+    status: completed
     dependencies:
       - i18n-routing
   - id: search-pagefind
@@ -150,5 +150,3 @@ flowchart TD
 - 重点在于**目录树生成**。由于 Obsidian 是文件夹嵌套结构，需要递归扫描 `Team-Guidebook/图书馆/**` 生成侧边栏导航树，并让 WikiLinks 默认指向 Library。
 
 ### 8) 评论、搜索、CI/CD
-
-- 保持原计划（Giscus, Pagefind, GitHub Actions）。

@@ -512,13 +512,35 @@ To support Obsidian-specific syntax, the remark/rehype pipeline is configured wi
   - **Path Resolution**: Images are synced from `Team-Guidebook/assets/` and `Team-Guidebook/图片库/` to `public/attachments/` during build/dev.
   - **CSS Class**: Generated images have `obsidian-image` class for styling.
 
-### 9) Comments Policy (Recommended Default)
+### 9) Comments System (Giscus Integration)
 
-- Enable comments for:
-  - News pages
-  - Publication highlight pages
-- Disable comments for:
-  - People / Projects / Library pages (can be enabled later)
+- **Implementation**: Giscus comments system powered by GitHub Discussions.
+- **Component**: `src/components/react/ui/GiscusComments.tsx`
+  - React component that dynamically loads Giscus script from `https://giscus.app/client.js`.
+  - Uses `useEffect` to inject script with configuration via `data-*` attributes.
+  - Supports all Giscus configuration options: repo, repoId, category, categoryId, mapping, term, theme, lang, etc.
+  - Handles script cleanup on component unmount.
+- **Configuration**: `src/config/giscus.ts`
+  - Reads configuration from environment variables (prefixed with `PUBLIC_` for client-side access).
+  - Required variables: `PUBLIC_GISCUS_REPO`, `PUBLIC_GISCUS_REPO_ID`, `PUBLIC_GISCUS_CATEGORY`, `PUBLIC_GISCUS_CATEGORY_ID`.
+  - Optional: `PUBLIC_GISCUS_THEME` (defaults to `preferred_color_scheme`).
+  - Returns `undefined` if configuration is missing (comments are disabled gracefully).
+- **Integration Points**:
+  - **News Pages**: Comments are integrated into `NewsTimeline` component.
+    - Each news item has a "Show Comments" / "Hide Comments" button.
+    - Comments are collapsed by default to avoid cluttering the timeline.
+    - Each news item uses unique identifier (`news-{item.id}`) to create separate discussion threads.
+  - **Future**: Can be extended to Publications highlight pages or other content types.
+- **Setup Requirements**:
+  - GitHub repository must be **public** (Giscus cannot access private repositories).
+  - GitHub Discussions must be enabled in repository settings.
+  - Giscus App must be installed and granted access to the repository.
+  - Discussion category must be created in GitHub Discussions.
+- **Data Storage**: Comments are stored in GitHub Discussions, not in the website's database.
+- **Thread Mapping**: Uses `identifier` prop to map each comment section to a unique discussion thread.
+  - News items: `news-{item.id}` format ensures each news entry has its own discussion.
+  - Supports custom mapping strategies via `mapping` and `term` props.
+- **Documentation**: See `docs/GISCUS_SETUP.md` for detailed setup instructions.
 
 ### 10) Team-Guidebook as Library
 
@@ -554,7 +576,7 @@ The following files/directories are gitignored to prevent committing development
 - **类型安全**: `src/components/react/types.ts` 定义了所有组件的数据契约。
 - **组件组织**:
   - `src/components/react/pages/`: 页面级组件（HomePage, PeoplePage, ProjectsPage, NewsPage, PublicationsPage, LibraryPage）
-  - `src/components/react/ui/`: 可复用的 UI 组件（GlassCard, NewsTimeline, NewsCalendar, CitationItem）
+  - `src/components/react/ui/`: 可复用的 UI 组件（GlassCard, NewsTimeline, NewsCalendar, CitationItem, GiscusComments, LibrarySidebar）
   - `src/components/react/layout/`: 布局组件（ReactBaseLayout - 可选，当前使用 Astro BaseLayout）
   - `src/components/react/RippleBackground.tsx`: 全局背景动效组件
 

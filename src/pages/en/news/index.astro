@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { NewsPage } from '../../../components/react/pages/NewsPage';
+import { getGiscusConfig } from '../../../config/giscus';
 
 const allNews = await getCollection('news', ({ data }) => data.publish !== false);
 const news = allNews
@@ -18,9 +19,12 @@ const news = allNews
     tags: item.data.tags || [],
     related_people: item.data.related_people || []
   }));
+
+// Get Giscus configuration
+const giscusConfig = getGiscusConfig();
 ---
 
 <BaseLayout title="News" description="Lab news and updates" lang="en">
-  <NewsPage client:load lang="en" news={news} />
+  <NewsPage client:load lang="en" news={news} giscusConfig={giscusConfig} />
 </BaseLayout>
 

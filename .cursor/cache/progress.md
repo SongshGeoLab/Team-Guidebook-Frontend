@@ -220,5 +220,35 @@
         - Library 侧边栏导航已实现并通过测试。
         - 目录树结构正确展示，支持多级嵌套。
         - 折叠/展开、高亮、自动展开功能正常工作。
-        - 响应式布局在移动端和桌面端都正常显示。
-        - 所有代码通过 lint 检查，无错误。
+    - 响应式布局在移动端和桌面端都正常显示。
+    - 所有代码通过 lint 检查，无错误。
+
+- **Giscus 评论系统集成 (Step 10) - 2025-12-30**:
+  - **Giscus 评论组件** (`src/components/react/ui/GiscusComments.tsx`):
+    - 实现了 React 组件，用于嵌入 Giscus（基于 GitHub Discussions 的评论系统）。
+    - 支持所有 Giscus 配置选项：repo、repoId、category、categoryId、mapping、term、theme、lang 等。
+    - 使用 `useEffect` 动态加载 Giscus 脚本，支持懒加载和配置更新。
+    - 通过 `data-*` 属性配置 Giscus 行为，脚本自动初始化评论框。
+  - **配置系统** (`src/config/giscus.ts`):
+    - 创建了配置模块，支持从环境变量读取 Giscus 配置。
+    - 支持的环境变量：`PUBLIC_GISCUS_REPO`、`PUBLIC_GISCUS_REPO_ID`、`PUBLIC_GISCUS_CATEGORY`、`PUBLIC_GISCUS_CATEGORY_ID`、`PUBLIC_GISCUS_THEME`。
+    - 如果配置缺失，评论功能会被禁用（不会报错）。
+  - **News 页面集成**:
+    - 更新了 `NewsTimeline` 组件，添加可展开/折叠的评论功能。
+    - 每个新闻项下方有 "Show Comments" / "Hide Comments" 按钮。
+    - 评论区域默认折叠，点击后展开，使用唯一的 identifier (`news-{item.id}`) 区分不同的讨论线程。
+    - 更新了 `NewsPage` 组件，支持传递 Giscus 配置。
+    - 更新了中英文 News 页面，自动读取配置并传递给组件。
+  - **文档**:
+    - 创建了 `docs/GISCUS_SETUP.md`，包含详细的配置步骤和故障排除指南。
+    - 说明了如何启用 GitHub Discussions、安装 Giscus App、获取配置信息等。
+  - **技术要点**:
+    - Giscus 是客户端嵌入的评论系统，无需服务器端支持。
+    - 评论数据存储在 GitHub Discussions 中，每个新闻项对应一个讨论线程。
+    - 支持多语言（通过 `lang` 配置），主题自适应（`preferred_color_scheme`）。
+    - 重要提示：GitHub 仓库必须设置为 public，否则 Giscus 无法访问 Discussions。
+  - **验证状态**:
+    - Giscus 评论功能已实现并通过测试。
+    - 配置系统正常工作，支持环境变量配置。
+    - 评论框在 News 页面正常显示和交互。
+    - 所有代码通过 lint 检查，无错误。

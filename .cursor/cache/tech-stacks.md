@@ -106,7 +106,17 @@
 - Astro i18n routing (locale-prefixed routes: `/zh/...`, `/en/...`)
 
 ### Comments
-- Giscus (GitHub Discussions-based, client-side embedding)
+- **Giscus** (GitHub Discussions-based, client-side embedding):
+  - **Component**: `src/components/react/ui/GiscusComments.tsx` - React component that dynamically loads Giscus script.
+  - **Configuration**: `src/config/giscus.ts` - Reads configuration from environment variables (`PUBLIC_GISCUS_*`).
+  - **Integration**: Embedded in News pages via `NewsTimeline` component with expandable/collapsible UI.
+  - **Setup**: Requires public GitHub repository, enabled Discussions, and installed Giscus App.
+  - **Documentation**: See `docs/GISCUS_SETUP.md` for detailed setup instructions.
+  - **Features**:
+    - Client-side only (no server required).
+    - Comments stored in GitHub Discussions.
+    - Supports multiple languages and themes.
+    - Unique discussion threads per content item via identifier mapping.
 
 ### Build & Deploy
 - Output: pure static HTML (`output: "static"`)
