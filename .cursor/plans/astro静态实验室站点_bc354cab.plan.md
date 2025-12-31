@@ -90,6 +90,8 @@ flowchart TD
   astroBuild --> dist[静态产物]
 ```
 
+
+
 ## 内容仓库结构建议（适配 Obsidian）
 
 建议以 **Direct Map** 方式复用你现有的 `Team-Guidebook/` 目录结构（不强制迁移到 `lab/zh/en`）。站点栏目是“视图/聚合”，内容仍按 Obsidian 的目录维护：
@@ -152,7 +154,6 @@ flowchart TD
 - **评论系统**：已集成 Giscus（基于 GitHub Discussions）
 - **搜索系统**：已集成 Pagefind（构建后生成全文搜索索引）
 - **部署**：已配置 Vercel 部署
-  - 创建 `vercel.json` 配置文件
-  - 构建流程：`prebuild` (内容同步) -> `build` (Astro 构建) -> `postbuild` (Pagefind 索引)
-  - 环境变量：`CONTENT_REPO_URL`、`CONTENT_REPO_REF`、Giscus 相关配置
-  - 详细说明见 `README.md` 的 Deployment (Vercel) 部分
+- 创建 `vercel.json` 配置文件
+- 构建流程：`prebuild` (内容同步) -> `build` (Astro 构建) -> `postbuild` (Pagefind 索引)
+- 环境变量：`CONTENT_REPO_URL`、`CONTENT_REPO_REF`、Giscus 相关配置

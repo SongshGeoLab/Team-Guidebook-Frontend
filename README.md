@@ -17,6 +17,8 @@ Astro 5 + TypeScript + Tailwind static site for the lab. Content is Obsidian-dri
 
 See [Configuration Guide](./docs/CONFIGURATION.md) for detailed setup instructions, especially for private content repositories.
 
+For content maintainers, see [Content Maintenance Guide](./docs/CONTENT_MAINTENANCE.md) for instructions on how to maintain content in the `Team-Guidebook` repository.
+
 ## Commands
 
 | Command             | Action                               |
@@ -59,3 +61,51 @@ The build will automatically:
 - Sync attachments from the content repository
 - Build the static site
 - Generate search index with Pagefind
+
+## Version Management (Release Please)
+
+This project uses [Release Please](https://github.com/googleapis/release-please) to automatically manage versions and releases based on [Conventional Commits](https://www.conventionalcommits.org/).
+
+### How It Works
+
+1. **Conventional Commits**: Use conventional commit messages in your PRs:
+   - `feat:` - New features (triggers minor version bump)
+   - `fix:` - Bug fixes (triggers patch version bump)
+   - `feat!:` or `BREAKING CHANGE:` - Breaking changes (triggers major version bump)
+   - `docs:`, `style:`, `refactor:`, `test:`, `chore:` - No version bump
+
+2. **Automatic Release PRs**: When you push to `main` branch, Release Please will:
+   - Analyze commits since the last release
+   - Update `CHANGELOG.md` with new changes
+   - Update `package.json` version
+   - Create a release PR with the changes
+
+3. **Publishing Releases**: When the release PR is merged:
+   - A new git tag is created (e.g., `v1.0.0`)
+   - A GitHub release is created with the changelog
+   - The version in `package.json` is updated
+
+### Example Commit Messages
+
+```bash
+# Feature (minor version bump)
+git commit -m "feat: add new search functionality"
+
+# Bug fix (patch version bump)
+git commit -m "fix: resolve image loading issue"
+
+# Breaking change (major version bump)
+git commit -m "feat!: refactor content loading API"
+```
+
+### Manual Release
+
+If you need to manually trigger a release, you can:
+
+1. Create a release PR manually by running the Release Please workflow
+2. Or use the GitHub CLI:
+   ```bash
+   gh workflow run release-please.yml
+   ```
+
+For more information, see the [Release Please documentation](https://github.com/googleapis/release-please).
