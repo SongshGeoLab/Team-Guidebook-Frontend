@@ -2,53 +2,10 @@ import type { Loader, LoaderContext } from 'astro/loaders';
 import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
+import { createRequire } from 'node:module';
 
-// Import citation-js at the top level to avoid module loading issues during build
-// Use lazy evaluation to avoid loading if not needed
-let CiteClass: any = null;
-let citationJsLoaded = false;
-
-async function ensureCitationJs(): Promise<any> {
-  if (citationJsLoaded && CiteClass) {
-    return CiteClass;
-  }
-  
-  try {
-    const citationJsModule = await import('@citation-js/core');
-    CiteClass = citationJsModule.Cite;
-    
-    if (!CiteClass) {
-      throw new Error('Cite class not found in @citation-js/core module');
-    }
-    
-    // Import and register BibTeX plugin
-    try {
-      const bibtexPlugin = await import('@citation-js/plugin-bibtex');
-      if (bibtexPlugin.default) {
-        if (typeof bibtexPlugin.default === 'function') {
-          bibtexPlugin.default(CiteClass);
-        } else if (CiteClass.plugins && typeof CiteClass.plugins.add === 'function') {
-          CiteClass.plugins.add(bibtexPlugin.default);
-        }
-      }
-    } catch (err) {
-      // Plugin might auto-register on import, continue anyway
-      // This is not critical, as the plugin may auto-register
-      if (err instanceof Error) {
-        console.warn(`BibTeX plugin registration: ${err.message}`);
-      }
-    }
-    
-    citationJsLoaded = true;
-    return CiteClass;
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    const errorStack = err instanceof Error ? err.stack : undefined;
-    throw new Error(
-      `Failed to load @citation-js/core: ${errorMessage}${errorStack ? `\n${errorStack}` : ''}`
-    );
-  }
-}
+// Use createRequire to load CommonJS modules robustly in all environments
+const require = createRequire(import.meta.url);
 
 // Define the shape of the publication item
 // Must match the schema in config.ts
@@ -106,7 +63,6 @@ function extractBibEntries(bibContent: string): Record<string, string> {
   // - Entry content: everything until matching closing brace (handles nested braces)
   const entryRegex = /@(\w+)\s*\{([^,\s]+)\s*,/g;
   let match;
-  let lastIndex = 0;
   
   const matches: Array<{ key: string; start: number }> = [];
   
@@ -273,13 +229,29 @@ export function publicationsLoader(): Loader {
         return;
       }
 
-      // Ensure citation-js is loaded
+      // Load citation-js synchronously using createRequire
+      // This avoids "Vite module runner has been closed" error during build
       let Cite: any;
       try {
-        Cite = await ensureCitationJs();
+        const citationCore = require('@citation-js/core');
+        Cite = citationCore.Cite;
+        
+        // Load and register BibTeX plugin
+        try {
+          const citationBibtex = require('@citation-js/plugin-bibtex');
+          // Support different export formats (CJS/ESM interop)
+          const plugin = citationBibtex.default || citationBibtex;
+          
+          if (typeof plugin === 'function') {
+             plugin(Cite);
+          } else if (Cite.plugins && typeof Cite.plugins.add === 'function') {
+             Cite.plugins.add(plugin);
+          }
+        } catch (pluginErr) {
+           context.logger.warn(`BibTeX plugin load warning: ${pluginErr instanceof Error ? pluginErr.message : String(pluginErr)}`);
+        }
+        
       } catch (err) {
-        // Use warn instead of error since build can continue without publications
-        // This allows the site to build successfully even if BibTeX parsing is unavailable
         const errorMessage = err instanceof Error ? err.message : String(err);
         context.logger.warn(
           `Publications loader: Skipping BibTeX processing due to citation-js load failure. ` +
@@ -350,4 +322,3 @@ export function publicationsLoader(): Loader {
     }
   };
 }
-
