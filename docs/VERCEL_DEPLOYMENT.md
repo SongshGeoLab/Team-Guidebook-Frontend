@@ -41,11 +41,18 @@
 
 如果内容仓库是私有的，需要配置部署密钥：
 
-#### 方法 1: 使用 GitHub App（推荐）
+#### 方法 1: 使用 GitHub App（推荐，但需要额外配置）
 
-1. 在 Vercel 项目设置中，进入 "Settings" -> "Git"
-2. 确保 "Install GitHub App" 已安装并授权访问私有仓库
-3. Vercel 会自动使用 GitHub App 的权限访问私有仓库
+**重要**：Vercel 的 GitHub App 默认只能访问当前项目仓库，无法访问其他私有仓库。需要额外配置：
+
+1. **在内容仓库中授权 Vercel GitHub App**：
+   - 进入内容仓库 `SongshGeoLab/Team-Guidebook` 的 Settings
+   - 进入 "Integrations" -> "Installed GitHub Apps"
+   - 找到 "Vercel" 应用，点击 "Configure"
+   - 在 "Repository access" 中，确保选择了 "Only select repositories" 并包含 `Team-Guidebook` 仓库
+   - 或者选择 "All repositories"（如果允许）
+
+2. **如果上述方法不可用，使用 Personal Access Token（方法 3）更可靠**
 
 #### 方法 2: 使用 Deploy Key
 
@@ -67,16 +74,31 @@
 
 **注意**：如果使用 Deploy Key，需要修改 `scripts/setup-content.mjs` 以支持 SSH 认证，或者使用 HTTPS 格式配合 Personal Access Token。
 
-#### 方法 3: 使用 Personal Access Token（HTTPS）
+#### 方法 3: 使用 Personal Access Token（HTTPS，推荐用于私有仓库）
 
-1. 在 GitHub 创建 Personal Access Token（Settings -> Developer settings -> Personal access tokens）
-   - 权限：`repo`（访问私有仓库）
+这是访问私有仓库最可靠的方法：
 
-2. 在 Vercel 项目设置中，修改 `CONTENT_REPO_URL`：
-   - `https://<token>@github.com/username/Team-Guidebook.git`
-   - 或者使用环境变量：`CONTENT_REPO_URL=https://github.com/username/Team-Guidebook.git` 和 `GITHUB_TOKEN=<token>`
+1. **在 GitHub 创建 Personal Access Token**：
+   - 访问 GitHub Settings -> Developer settings -> Personal access tokens -> Tokens (classic)
+   - 点击 "Generate new token (classic)"
+   - 选择权限：**`repo`**（完整仓库访问权限，包括私有仓库）
+   - 设置过期时间（建议选择较长时间，如 90 天或 1 年）
+   - 点击 "Generate token"
+   - **重要**：立即复制 token（格式：`ghp_xxxxxxxxxxxx`），之后无法再次查看
 
-3. 如果使用环境变量方式，需要修改 `scripts/setup-content.mjs` 以支持从环境变量读取 token。
+2. **在 Vercel 项目设置中配置环境变量**：
+   - `CONTENT_REPO_URL` = `https://github.com/SongshGeoLab/Team-Guidebook.git`
+   - `GITHUB_TOKEN` = `ghp_your_token_here`（你刚创建的 token）
+   - `CONTENT_REPO_REF` = `main`（可选）
+
+3. **脚本会自动使用 `GITHUB_TOKEN` 进行认证**：
+   - 脚本已支持从 `GITHUB_TOKEN` 环境变量读取 token
+   - 会自动将 token 插入到 HTTPS URL 中进行认证
+
+**安全提示**：
+- Token 存储在 Vercel 环境变量中，不会暴露在代码中
+- 定期轮换 token 以提高安全性
+- 如果 token 泄露，立即在 GitHub 中撤销
 
 ### 4. 部署
 

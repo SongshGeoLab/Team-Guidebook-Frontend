@@ -198,8 +198,23 @@ const setupContentCollections = (contentRoot) => {
     const source = path.resolve(teamGuidebookPath, sourcePath);
     const target = path.resolve(contentDir, collectionName);
 
+    log(`Setting up ${collectionName} collection:`);
+    log(`  Team-Guidebook path: ${teamGuidebookPath}`);
+    log(`  Source path: ${source}`);
+    log(`  Target path: ${target}`);
+    log(`  Source exists: ${exists(source)}`);
+
     if (!exists(source)) {
-      log(`Source directory ${source} not found, skipping ${collectionName} collection...`);
+      error(`Source directory ${source} not found, skipping ${collectionName} collection...`);
+      // List what's actually in the teamGuidebookPath
+      if (exists(teamGuidebookPath)) {
+        try {
+          const dirContents = fs.readdirSync(teamGuidebookPath);
+          log(`  Contents of ${teamGuidebookPath}: ${dirContents.join(', ')}`);
+        } catch (err) {
+          log(`  Could not read directory: ${err.message}`);
+        }
+      }
       return;
     }
 
@@ -209,22 +224,48 @@ const setupContentCollections = (contentRoot) => {
         const stat = fs.lstatSync(target);
         if (stat.isSymbolicLink()) {
           const existingTarget = fs.readlinkSync(target);
-          if (path.resolve(cwd, existingTarget) === source) {
+          const resolvedExisting = path.isAbsolute(existingTarget) 
+            ? existingTarget 
+            : path.resolve(path.dirname(target), existingTarget);
+          if (resolvedExisting === source) {
             log(`Reusing existing symlink: ${collectionName} -> ${sourcePath}`);
             return;
           }
+          log(`Removing existing symlink with different target: ${existingTarget}`);
+        } else {
+          log(`Removing existing directory/file: ${target}`);
         }
         fs.rmSync(target, { recursive: true, force: true });
       } catch (err) {
-        log(`Warning: Could not remove existing ${target}: ${err.message}`);
+        error(`Warning: Could not remove existing ${target}: ${err.message}`);
       }
     }
 
     try {
+      // Use absolute path for symlink to avoid issues in build environments
       fs.symlinkSync(source, target, 'dir');
-      log(`Linked ${collectionName} collection: ${target} -> ${sourcePath}`);
+      log(`✓ Linked ${collectionName} collection: ${target} -> ${sourcePath}`);
+      
+      // Verify the symlink was created correctly
+      if (exists(target)) {
+        const stat = fs.lstatSync(target);
+        if (stat.isSymbolicLink()) {
+          const actualTarget = fs.readlinkSync(target);
+          log(`  Verified: symlink points to ${actualTarget}`);
+        } else {
+          error(`  Warning: ${target} exists but is not a symlink`);
+        }
+      }
     } catch (err) {
       error(`Failed to create symlink for ${collectionName}: ${err.message}`);
+      error(`  Source: ${source}`);
+      error(`  Target: ${target}`);
+      // Try to provide more context
+      if (err.code === 'EEXIST') {
+        error(`  Target already exists (this should have been handled above)`);
+      } else if (err.code === 'EACCES') {
+        error(`  Permission denied - check file permissions`);
+      }
     }
   };
 

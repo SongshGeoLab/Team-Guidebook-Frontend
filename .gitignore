@@ -4,7 +4,9 @@ dist/
 .astro/
 .content/
 .content
-public/
+# Note: public/ should NOT be ignored - it contains static assets like background.jpg
+# Only ignore generated content in public/attachments/ (synced from content repo)
+public/attachments/
 
 # dependencies
 node_modules/
