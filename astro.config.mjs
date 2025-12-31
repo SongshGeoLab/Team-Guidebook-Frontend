@@ -72,7 +72,18 @@ export default defineConfig({
   },
   integrations: [react()],
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
+    build: {
+      rollupOptions: {
+        external: ['/pagefind/pagefind.js']
+      }
+    },
+    resolve: {
+      alias: {
+        // Prevent Vite from trying to resolve pagefind at build time
+        '/pagefind/pagefind.js': '/pagefind/pagefind.js'
+      }
+    }
   },
   markdown: {
     remarkPlugins: [

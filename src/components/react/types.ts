@@ -51,4 +51,12 @@ export interface LibraryItem {
   detailUrl?: string;
 }
 
+export interface SearchResult {
+  id: string;
+  url: string;
+  title: string;
+  excerpt: string;
+  meta?: Record<string, any>;
+}
+
 

@@ -1,0 +1,8 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SearchPage } from '../../components/react/pages/SearchPage';
+---
+
+<BaseLayout title="搜索" description="搜索实验室网站的所有内容" lang="zh">
+  <SearchPage client:load lang="zh" />
+</BaseLayout>

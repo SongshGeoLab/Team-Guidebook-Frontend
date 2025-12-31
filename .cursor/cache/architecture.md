@@ -585,3 +585,56 @@ The following files/directories are gitignored to prevent committing development
   - 所有数据由 Astro 页面获取并转换为组件期望的格式。
   - 组件保持纯展示逻辑，交互通过 props 回调处理。
   - 背景和全局动效通过 `BaseLayout.astro` 统一管理。
+
+### 14) Pagefind 搜索系统
+
+- **`src/components/react/pages/SearchPage.tsx`**:
+  - React 搜索页面组件，提供全站全文搜索功能。
+  - **动态加载机制**: 使用 `Function` 构造函数实现运行时动态导入 Pagefind 模块，避免 Vite 在构建时尝试解析 `/pagefind/pagefind.js`（该路径只在构建后的 `dist/` 目录中存在）。
+  - **初始化流程**:
+    1. 首先检查 Pagefind 元数据文件是否存在（`/pagefind/pagefind-entry.json`）。
+    2. 如果不存在（开发模式），显示友好提示信息。
+    3. 如果存在，动态导入 Pagefind 模块并调用 `init()` 初始化。
+    4. 将初始化后的模块存储在 `window.__pagefind_module` 供后续搜索使用。
+  - **搜索功能**:
+    - 实时搜索：用户输入时触发搜索（300ms 防抖）。
+    - 调用 `pagefindModule.search()` 执行搜索，返回包含结果数组的 Promise。
+    - 对每个结果调用异步 `data()` 方法获取完整数据（标题、URL、摘要等）。
+    - 结果按相关性排序显示，支持不同内容类型的图标区分。
+  - **错误处理**: 完善的错误处理和用户友好的错误提示。
+
+- **`src/pages/[lang]/search.astro`**:
+  - 中英文搜索页面路由，使用 `BaseLayout` 和 `SearchPage` 组件。
+  - 路由路径：`/zh/search` 和 `/en/search`。
+
+- **`src/components/Header.astro`**:
+  - 在导航栏右侧添加了搜索图标链接，点击跳转到对应语言的搜索页面。
+  - 搜索图标位于语言切换按钮左侧。
+
+- **`package.json`**:
+  - **依赖**: `pagefind` (v1.2.1) 作为 `devDependencies`。
+  - **构建脚本**: `postbuild: "pagefind --site dist"` - 在 Astro 构建完成后自动运行 Pagefind 索引生成。
+
+- **`astro.config.mjs`**:
+  - 在 `vite.build.rollupOptions.external` 中添加了 `/pagefind/pagefind.js`，将其标记为外部模块。
+  - 避免 Vite 在构建时尝试解析该路径（只在运行时存在）。
+
+- **Pagefind 索引生成**:
+  - Pagefind 在 `postbuild` 阶段扫描 `dist/` 目录中的所有 HTML 文件。
+  - 自动检测页面语言（从 HTML `lang` 属性或 URL 路径）。
+  - 生成搜索索引文件存储在 `dist/pagefind/` 目录：
+    - `pagefind.js` - 主搜索模块（ES 模块）
+    - `pagefind-entry.json` - 元数据和语言配置
+    - `pagefind.{lang}.pf_meta` - 语言特定的元数据
+    - `wasm.{lang}.pagefind` - WebAssembly 模块
+    - `index/`, `filter/`, `fragment/` - 索引数据文件
+
+- **开发模式限制**:
+  - Pagefind 索引只能在构建后生成，因为需要扫描实际的 HTML 输出。
+  - 开发模式下搜索功能不可用，搜索页面会显示友好提示。
+  - 建议使用 `npm run build && npm run preview` 来测试搜索功能。
+
+- **搜索范围**:
+  - 搜索覆盖所有构建后的 HTML 页面（包括所有语言版本）。
+  - 支持全文搜索：页面标题、内容、元数据等。
+  - 自动检测并支持多语言搜索（中文、英文等）。

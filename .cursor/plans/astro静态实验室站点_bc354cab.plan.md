@@ -54,7 +54,7 @@ todos:
       - i18n-routing
   - id: search-pagefind
     content: 接入 Pagefind：构建后索引 + 搜索页/搜索框
-    status: pending
+    status: completed
     dependencies:
       - i18n-routing
       - content-collections

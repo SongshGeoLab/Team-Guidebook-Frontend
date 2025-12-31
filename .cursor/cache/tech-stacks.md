@@ -100,7 +100,31 @@
   - `class-variance-authority` (v0.7.1) - 变体类名管理
 
 ### Search
-- Pagefind (static full-text search)
+- **Pagefind** (v1.2.1): Static full-text search engine for static sites.
+  - **Installation**: Installed as `devDependency` via npm.
+  - **Build Integration**: 
+    - Automatically runs after Astro build via `postbuild` script: `pagefind --site dist`.
+    - Scans all HTML files in `dist/` directory and generates search index.
+    - Index files stored in `dist/pagefind/` directory.
+  - **Runtime Loading**: 
+    - Uses dynamic ES module import at runtime to avoid build-time resolution issues.
+    - Implemented via `Function` constructor to prevent Vite from bundling.
+    - Module path `/pagefind/pagefind.js` only exists after build.
+  - **Features**:
+    - Full-text search across all site content.
+    - Automatic language detection (supports multi-language sites).
+    - Relevance-based ranking.
+    - Highlights search terms in results.
+    - Zero runtime dependencies (pure static).
+  - **API Usage**:
+    - Import: `await import('/pagefind/pagefind.js')`
+    - Initialize: `await pagefindModule.init()`
+    - Search: `await pagefindModule.search(query)`
+    - Results include async `data()` method to load full page data.
+  - **Development Mode**:
+    - Search not available in dev mode (requires built HTML files).
+    - Search page displays friendly message prompting user to build first.
+    - Use `npm run build && npm run preview` to test search functionality.
 
 ### i18n
 - Astro i18n routing (locale-prefixed routes: `/zh/...`, `/en/...`)
@@ -125,4 +149,7 @@
 - Attachment sync: Automatically syncs `Team-Guidebook/assets/` and `Team-Guidebook/图片库/` to `public/attachments/` during `predev` and `prebuild` phases.
   - Handles filename collisions with warnings.
   - Supports recursive directory copying.
+- Search index generation: Pagefind automatically generates search index in `postbuild` phase after Astro build completes.
+  - Index stored in `dist/pagefind/` directory.
+  - Only available in production builds (not in dev mode).
 - 依赖安装注意：r3f 与 React 18 需使用 `@react-three/fiber@^8`，必要时用 `npm install --legacy-peer-deps` 以避免 peer 冲突。

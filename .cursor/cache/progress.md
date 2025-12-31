@@ -252,3 +252,47 @@
     - 配置系统正常工作，支持环境变量配置。
     - 评论框在 News 页面正常显示和交互。
     - 所有代码通过 lint 检查，无错误。
+
+- **Pagefind 搜索系统集成 (Step 11) - 2025-12-31**:
+  - **Pagefind 集成**:
+    - 安装 Pagefind (v1.2.1) 作为开发依赖。
+    - 配置 `package.json` 添加 `postbuild` 脚本：`pagefind --site dist`，在构建后自动生成搜索索引。
+    - Pagefind 会自动扫描 `dist/` 目录中的所有 HTML 文件，生成全文搜索索引。
+  - **搜索页面组件** (`src/components/react/pages/SearchPage.tsx`):
+    - 实现了完整的搜索页面 React 组件。
+    - **动态加载**: 使用 `Function` 构造函数实现运行时动态导入，避免 Vite 在构建时尝试解析 `/pagefind/pagefind.js`。
+    - **初始化检查**: 在加载前检查 Pagefind 文件是否存在（开发模式下会显示友好提示）。
+    - **搜索功能**: 
+      - 实时搜索（300ms 防抖），支持多语言搜索。
+      - 结果展示：标题、摘要、URL，支持不同内容类型的图标区分（Library、People、Projects、News、Publications）。
+      - 异步加载结果数据，正确处理 Pagefind 的 `data()` Promise。
+    - **错误处理**: 
+      - 开发模式下检测到 Pagefind 文件不存在时，显示友好的提示信息。
+      - 构建模式下如果加载失败，显示错误信息。
+    - **类型定义**: 在 `src/components/react/types.ts` 中添加了 `SearchResult` 接口定义。
+  - **搜索页面路由**:
+    - 创建了中英文搜索页面：
+      - `src/pages/zh/search.astro` - 中文搜索页
+      - `src/pages/en/search.astro` - 英文搜索页
+    - 路由路径：`/[lang]/search`
+  - **Header 导航集成**:
+    - 在 `src/components/Header.astro` 中添加了搜索图标链接。
+    - 搜索图标位于语言切换按钮左侧，点击跳转到对应的搜索页面。
+  - **构建配置**:
+    - 在 `astro.config.mjs` 中添加了 Vite 配置，将 Pagefind 模块外部化，避免构建时解析错误。
+    - 使用 `/* @vite-ignore */` 注释和 `Function` 构造函数确保动态导入只在运行时执行。
+  - **开发模式处理**:
+    - 在开发模式下，搜索页面会检测 Pagefind 文件是否存在。
+    - 如果不存在（开发模式），显示提示："搜索功能需要先构建项目（npm run build）后才能使用"。
+    - 这是因为 Pagefind 需要在构建后的 HTML 文件上生成索引。
+  - **技术要点**:
+    - Pagefind 是静态站点搜索引擎，无需服务器端支持。
+    - 索引在构建后生成，支持多语言搜索（自动检测页面语言）。
+    - 搜索结果按相关性排序，支持全文搜索和高亮显示。
+    - 搜索索引存储在 `dist/pagefind/` 目录中，包含元数据、索引文件和 WASM 模块。
+  - **验证状态**:
+    - Pagefind 搜索功能已实现并通过测试。
+    - 构建脚本正确配置，postbuild 自动生成索引。
+    - 搜索页面在构建模式下正常工作。
+    - 开发模式下显示友好的提示信息。
+    - 所有代码通过 lint 检查，无错误。

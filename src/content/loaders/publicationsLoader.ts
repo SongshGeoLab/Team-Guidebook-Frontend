@@ -3,6 +3,53 @@ import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
 
+// Import citation-js at the top level to avoid module loading issues during build
+// Use lazy evaluation to avoid loading if not needed
+let CiteClass: any = null;
+let citationJsLoaded = false;
+
+async function ensureCitationJs(): Promise<any> {
+  if (citationJsLoaded && CiteClass) {
+    return CiteClass;
+  }
+  
+  try {
+    const citationJsModule = await import('@citation-js/core');
+    CiteClass = citationJsModule.Cite;
+    
+    if (!CiteClass) {
+      throw new Error('Cite class not found in @citation-js/core module');
+    }
+    
+    // Import and register BibTeX plugin
+    try {
+      const bibtexPlugin = await import('@citation-js/plugin-bibtex');
+      if (bibtexPlugin.default) {
+        if (typeof bibtexPlugin.default === 'function') {
+          bibtexPlugin.default(CiteClass);
+        } else if (CiteClass.plugins && typeof CiteClass.plugins.add === 'function') {
+          CiteClass.plugins.add(bibtexPlugin.default);
+        }
+      }
+    } catch (err) {
+      // Plugin might auto-register on import, continue anyway
+      // This is not critical, as the plugin may auto-register
+      if (err instanceof Error) {
+        console.warn(`BibTeX plugin registration: ${err.message}`);
+      }
+    }
+    
+    citationJsLoaded = true;
+    return CiteClass;
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorStack = err instanceof Error ? err.stack : undefined;
+    throw new Error(
+      `Failed to load @citation-js/core: ${errorMessage}${errorStack ? `\n${errorStack}` : ''}`
+    );
+  }
+}
+
 // Define the shape of the publication item
 // Must match the schema in config.ts
 interface PublicationItem {
@@ -226,24 +273,20 @@ export function publicationsLoader(): Loader {
         return;
       }
 
-      // Dynamically import citation-js (ESM)
-      const { Cite } = await import('@citation-js/core');
-      
-      // Import and register BibTeX plugin
-      // The plugin should auto-register, but we need to import it
+      // Ensure citation-js is loaded
+      let Cite: any;
       try {
-        const bibtexPlugin = await import('@citation-js/plugin-bibtex');
-        // Some versions require explicit registration
-        if (bibtexPlugin.default) {
-          if (typeof bibtexPlugin.default === 'function') {
-            bibtexPlugin.default(Cite);
-          } else if (Cite.plugins && typeof Cite.plugins.add === 'function') {
-            Cite.plugins.add(bibtexPlugin.default);
-          }
-        }
+        Cite = await ensureCitationJs();
       } catch (err) {
-        context.logger.warn('Failed to load BibTeX plugin, trying without explicit registration:', err);
-        // Plugin might auto-register on import, continue anyway
+        // Use warn instead of error since build can continue without publications
+        // This allows the site to build successfully even if BibTeX parsing is unavailable
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        context.logger.warn(
+          `Publications loader: Skipping BibTeX processing due to citation-js load failure. ` +
+          `Error: ${errorMessage}. ` +
+          `Please ensure @citation-js/core and @citation-js/plugin-bibtex are installed.`
+        );
+        return;
       }
 
       for (const bibFile of bibFiles) {
