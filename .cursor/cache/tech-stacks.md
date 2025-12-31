@@ -35,9 +35,21 @@
       - `people` → `通讯录/*.md`
       - `projects` → `图书馆/项目/*.md`
       - `library` → `图书馆/**/*.md` (excluding `项目/` and `文献/`)
-      - `publications` → `图书馆/文献/*.md`
+      - `publications` → `图书馆/文献/*.bib` or `图书馆/*.bib` (requires custom loader for BibTeX parsing)
       - `news` → `档案馆/YYYY-MM-DD.md` (requires custom loader for bullet extraction)
-  - `citation-js` (BibTeX -> JSON + formatted citations) - *Planned for Phase 2*
+  - **BibTeX Processing**:
+    - **`@citation-js/core`** (v0.7.0): Core library for parsing and formatting citations. Used by `publicationsLoader.ts` to parse BibTeX files.
+    - **`@citation-js/plugin-bibtex`** (v0.7.0): Plugin for BibTeX format support. Provides BibTeX input/output capabilities for citation-js.
+    - **Plugin Registration**: The loader handles multiple registration strategies to ensure compatibility across different citation-js versions:
+      - Auto-registration on import (preferred)
+      - Function call registration: `plugin(Cite)`
+      - Explicit registration: `Cite.plugins.add(plugin)`
+    - **BibTeX Parsing Flow**:
+      1. Scan for `.bib` files in `图书馆/文献/` or `图书馆/` root
+      2. Read and parse BibTeX file content using `Cite` class
+      3. Extract individual entries and their original BibTeX strings
+      4. Transform citation-js entry objects to our schema format
+      5. Store as publications collection items
   - **Markdown Processing**:
     - **`marked`** (v17.0.1): Markdown-to-HTML converter. Used by `newsLoader.ts` to convert bullet point content from Daily Notes to HTML.
     - **`gray-matter`** (v4.0.3): Frontmatter parser. Used by `newsLoader.ts` to extract YAML frontmatter from Daily Notes files.

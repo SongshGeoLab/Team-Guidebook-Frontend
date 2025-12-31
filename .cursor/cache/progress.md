@@ -155,3 +155,33 @@
         - News loader 已实现并通过测试。
         - 所有 bug 已修复，lint 错误已解决。
         - Markdown 处理流程正常工作，Obsidian 语法（WikiLinks, Callouts, Images）正确转换。
+
+- **Publications BibTeX 集成 (Step 8) - 2025-12-30**:
+    - **Custom Publications Loader** (`src/content/loaders/publicationsLoader.ts`):
+        - 实现了自定义 Astro Content Loader，用于处理 BibTeX 文件（`.bib`）。
+        - **文件扫描**: 支持两种位置查找 `.bib` 文件：
+            - 优先：`图书馆/文献/` 目录（原有设计）
+            - 备选：`图书馆/` 根目录（适配用户实际放置位置）
+        - **BibTeX 解析**: 使用 `@citation-js/core` 和 `@citation-js/plugin-bibtex` 解析 BibTeX 文件。
+        - **插件注册**: 实现了兼容多种版本的插件注册方式，支持自动注册和手动注册。
+        - **元数据提取**: 从 BibTeX 条目中提取：
+            - 标题、作者（支持结构化对象和字符串格式）、年份、venue（journal/booktitle/publisher）
+            - DOI（自动添加 `https://doi.org/` 前缀）、PDF 路径、标签（从 keywords 字段）
+        - **BibTeX 字符串保存**: 提取并保存原始 BibTeX 条目字符串，供前端组件一键复制使用。
+        - **BibTeX 条目提取**: 实现了 `extractBibEntries()` 函数，正确处理多行条目和嵌套大括号。
+        - **错误处理**: 添加了完善的错误处理，单个文件解析失败不影响其他文件处理。
+    - **Schema 更新** (`src/content/config.ts`):
+        - 在 `publicationsSchema` 中添加了 `bibtex: z.string().optional()` 字段，用于存储原始 BibTeX 字符串。
+        - 将 `publications` collection 从 `type: 'content'` 改为使用 `loader: publicationsLoader()`。
+        - 更新了注释，说明现在使用 BibTeX 作为数据源。
+    - **页面更新**:
+        - 更新了中英文 publications 页面，正确传递 `bibtex` 字段给前端组件。
+        - 修复了 `url` 字段映射，优先使用 `pdf`，其次使用 `doi`。
+    - **技术栈补充**:
+        - 新增依赖: `@citation-js/core` (v0.7.0) - BibTeX 解析核心库
+        - 新增依赖: `@citation-js/plugin-bibtex` (v0.7.0) - BibTeX 格式支持插件
+    - **验证状态**:
+        - Publications loader 已实现并通过测试。
+        - 支持从 `图书馆/文献/` 或 `图书馆/` 根目录加载 `.bib` 文件。
+        - BibTeX 解析、元数据提取、BibTeX 字符串保存功能正常工作。
+        - 与现有的 PublicationsPage 组件完全兼容，支持按年份和标签筛选。

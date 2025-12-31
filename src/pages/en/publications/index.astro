@@ -11,7 +11,7 @@ const publications = allPubs.map((pub) => ({
   venue: pub.data.venue,
   year: typeof pub.data.year === 'number' ? pub.data.year : Number(pub.data.year),
   tags: pub.data.tags || [],
-  url: pub.data.pdf || pub.data.url,
+  url: pub.data.pdf || pub.data.doi,
   bibtex: pub.data.bibtex
 }));
 ---

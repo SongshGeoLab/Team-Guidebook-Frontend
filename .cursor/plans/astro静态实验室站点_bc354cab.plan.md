@@ -39,7 +39,7 @@ todos:
       - content-collections
   - id: publications-bib
     content: 接入 `citation-js`：解析 `.bib` 生成 Publications 列表与筛选，并支持内容引用 bib key
-    status: pending
+    status: completed
     dependencies:
       - content-collections
   - id: library-render

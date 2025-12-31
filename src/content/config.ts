@@ -1,5 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { newsLoader } from './loaders/newsLoader';
+import { publicationsLoader } from './loaders/publicationsLoader';
 
 /**
  * Base schema fields shared across multiple collections.
@@ -73,9 +74,9 @@ const librarySchema = z.object({
 
 /**
  * Publications collection schema.
- * Phase 1: Simple markdown-based entries.
- * Phase 2: Will integrate BibTeX via citation-js.
- * Maps from: .content/Team-Guidebook/图书馆/文献/ (all .md files, short-term)
+ * Phase 2: Integrated BibTeX via citation-js.
+ * Maps from: .content/Team-Guidebook/图书馆/文献/ (all .bib files)
+ * Uses custom loader to parse BibTeX entries.
  */
 const publicationsSchema = z.object({
   ...baseSchema,
@@ -84,6 +85,7 @@ const publicationsSchema = z.object({
   venue: z.string().optional().describe('Publication venue (journal, conference, etc.)'),
   year: z.number().int().describe('Publication year'),
   bib_key: z.string().optional().describe('BibTeX key for citation'),
+  bibtex: z.string().optional().describe('Original BibTeX entry string'),
   doi: z.string().url().optional().describe('DOI URL'),
   pdf: z.string().optional().describe('PDF file path in attachments'),
   tags: z.array(z.string()).default([]).describe('Research topic tags for filtering'),
@@ -126,7 +128,7 @@ export const collections = {
     // and can be filtered at query time if needed.
   }),
   publications: defineCollection({
-    type: 'content',
+    loader: publicationsLoader(),
     schema: publicationsSchema,
   }),
 };

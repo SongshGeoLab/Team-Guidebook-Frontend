@@ -286,7 +286,7 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
     - **Projects**: Maps from `图书馆/项目/*.md`. Required: `id`, `title`, `start_date`. Optional: `end_date`, `people` (Person IDs), `repo`, `bib_key`.
     - **News**: Maps from `档案馆/YYYY-MM-DD.md` (Daily Notes). Required: `date`, `title` (optional, defaults to date string), `content` (HTML). Optional: `related_people` (resolved from `#P/<Name>`). **Uses custom loader** (`newsLoader()`) for bullet extraction from Daily Notes.
     - **Library**: Maps from `图书馆/**/*.md` (excluding `项目/` and `文献/`). Very permissive schema using `.passthrough()` to allow extra fields. Optional: `title`, `lang`.
-    - **Publications**: Maps from `图书馆/文献/*.md` (Phase 1: markdown-based). Required: `title`, `authors`, `year`. Optional: `venue`, `bib_key`, `doi`, `pdf`, `tags`.
+    - **Publications**: Maps from `图书馆/文献/*.bib` or `图书馆/*.bib` (Phase 2: BibTeX-based). Required: `title`, `authors`, `year`. Optional: `venue`, `bib_key`, `bibtex` (original BibTeX string), `doi`, `pdf`, `tags`. **Uses custom loader** (`publicationsLoader()`) for BibTeX parsing.
   - **Schema Features**:
     - Handles `null` values gracefully (especially for arrays like `tags`, `aliases`).
     - Transforms date strings to Date objects automatically.
@@ -320,6 +320,42 @@ We adopt **strategy A**: keep existing vault asset folders, but expose a single 
     - Throws error if no content root is found (prompts user to run `npm run setup:content`).
   - **Output**: Returns array of `NewsItem` objects conforming to `newsSchema` in `config.ts`.
   - **Dependencies**: Uses `fast-glob` for file pattern matching, `gray-matter` for frontmatter parsing, `marked` for Markdown-to-HTML conversion.
+
+- **`src/content/loaders/publicationsLoader.ts`**:
+  - **Purpose**: Custom Astro Content Loader that processes BibTeX files (`.bib`) into structured Publications items.
+  - **Input**: BibTeX files (`.bib`) located in:
+    - Primary: `Team-Guidebook/图书馆/文献/` directory
+    - Fallback: `Team-Guidebook/图书馆/` root directory (for convenience)
+  - **File Discovery**:
+    - Uses `fast-glob` to scan for `.bib` files in both locations.
+    - Prioritizes `图书馆/文献/` directory, falls back to `图书馆/` root if no files found.
+    - Logs which directory is being used as the source.
+  - **BibTeX Parsing**:
+    - Dynamically imports `@citation-js/core` and `@citation-js/plugin-bibtex`.
+    - Handles plugin registration with multiple fallback strategies (auto-register, function call, or `Cite.plugins.add`).
+    - Uses `Cite` class to parse BibTeX file content into structured data.
+  - **BibTeX Entry Extraction**:
+    - Implements `extractBibEntries()` function to extract individual BibTeX entries from raw file content.
+    - Handles multi-line entries and nested braces correctly.
+    - Creates a map of citation key → BibTeX string for preserving original format.
+  - **Metadata Extraction** (`parseBibEntry()` function):
+    - **Title**: Extracts from `entry.title` (required, skips entries without title).
+    - **Authors**: Handles both structured objects (`{given, family}`) and string formats (splits by "and").
+    - **Year**: Extracts from `entry.issued['date-parts']`, `entry.year`, or `entry['date-parts']`.
+    - **Venue**: Extracts from `container-title`, `journal`, `booktitle`, or `publisher`.
+    - **DOI**: Extracts and normalizes (adds `https://doi.org/` prefix if missing).
+    - **PDF**: Extracts from `file` or `pdf` fields.
+    - **Tags**: Extracts from `keywords` field (supports array and comma/semicolon-separated strings).
+    - **BibTeX String**: Preserves original BibTeX entry string for copy-to-clipboard functionality.
+  - **Error Handling**:
+    - Wraps plugin registration in try-catch to handle version compatibility issues.
+    - Continues processing other files if one file fails to parse.
+    - Logs warnings and errors via `context.logger` for debugging.
+  - **Content Root Resolution**:
+    - Uses same `getContentRoot()` helper as `newsLoader.ts`.
+    - Checks `.content/Team-Guidebook/`, `.content/`, and local `Team-Guidebook/` in order.
+  - **Output**: Stores `PublicationItem` objects via `context.store.set()` conforming to `publicationsSchema` in `config.ts`.
+  - **Dependencies**: Uses `fast-glob` for file pattern matching, `@citation-js/core` and `@citation-js/plugin-bibtex` for BibTeX parsing.
 
 - **`scripts/setup-content.mjs` - Content Collections Setup**:
   - **`setupContentCollections()` Function**:
@@ -383,9 +419,15 @@ Since source content comes from non-standard structures (Daily Notes, BibTeX), c
     - **Input**: `Team-Guidebook/图书馆/**/*.md`
     - **Output**: `library` collection (path-preserving).
 
-5.  **Publications (Future BibTeX Loader)**:
-    - Phase 1 can render `Team-Guidebook/图书馆/文献/*.md` as library-like pages.
-    - Phase 2 introduces BibTeX (`.bib`) + `citation-js` for structured filtering page.
+5.  **Publications Loader (BibTeX)**:
+    - **Input**: `Team-Guidebook/图书馆/文献/*.bib` or `Team-Guidebook/图书馆/*.bib`
+    - **Logic**:
+      - Scan for `.bib` files in both locations (prioritizes `文献/` directory).
+      - Parse BibTeX files using `citation-js` library.
+      - Extract metadata (title, authors, year, venue, DOI, PDF, tags) from each BibTeX entry.
+      - Preserve original BibTeX string for each entry (for copy-to-clipboard).
+      - Construct `PublicationItem` object: `{ id (bib_key), title, authors, venue, year, bibtex, doi, pdf, tags, publish, date }`.
+    - **Output**: A virtual `publications` collection with structured publication data.
 
 #### Markdown Processing Pipeline (`astro.config.mjs`)
 To support Obsidian-specific syntax, the remark/rehype pipeline is configured with the following plugins (executed in order):
