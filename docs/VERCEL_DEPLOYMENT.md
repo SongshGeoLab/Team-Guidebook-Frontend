@@ -119,13 +119,47 @@
 - [ ] 搜索功能正常工作（需要等待 Pagefind 索引生成）
 - [ ] Giscus 评论功能正常（如果已配置）
 
-### 6. 自动部署
+### 6. 自动部署与预览环境
 
 Vercel 会在以下情况自动触发部署：
 
-- 推送到主分支（main/master）
-- 创建 Pull Request
-- 手动触发（在 Vercel Dashboard 中）
+- **生产环境**：推送到主分支（main/master）→ 部署到生产环境
+- **预览环境**：推送到其他分支（如 `dev`）→ 自动创建预览部署
+- **Pull Request**：创建或更新 PR → 自动创建预览部署
+- **手动触发**：在 Vercel Dashboard 中手动触发部署
+
+#### 配置预览部署
+
+Vercel 默认会为所有分支创建预览部署。要确保 `dev` 分支触发预览部署：
+
+1. **在 Vercel 项目设置中**：
+   - 进入 "Settings" -> "Git"
+   - 确认 "Production Branch" 设置为 `main`（或你的主分支）
+   - 确认 "Automatic deployments from Git" 已启用
+
+2. **预览部署的 URL**：
+   - 格式：`https://your-project-{hash}.vercel.app`
+   - 每个分支和 PR 都有唯一的预览 URL
+   - 可以在 Vercel Dashboard 的 "Deployments" 页面查看
+
+3. **为预览环境配置不同的内容分支**（可选）：
+
+   如果你想在 `dev` 分支预览时使用 `dev` 分支的内容仓库，可以：
+
+   - 在 Vercel 项目设置中，进入 "Settings" -> "Environment Variables"
+   - 为 `CONTENT_REPO_REF` 设置不同的值：
+     - **Production**: `main`
+     - **Preview**: `dev`（或使用 Vercel 的自动环境变量）
+     - **Development**: `dev`
+
+   或者，使用 Vercel 的环境变量功能，根据部署环境自动选择分支。
+
+#### 预览部署的优势
+
+- **安全测试**：在合并到主分支前测试更改
+- **团队协作**：分享预览链接给团队成员审查
+- **独立环境**：每个分支都有独立的部署环境
+- **自动更新**：每次推送都会自动更新预览部署
 
 ## 故障排除
 

@@ -194,7 +194,7 @@ const setupContentCollections = (contentRoot) => {
    * @param {string} collectionName - Collection name (e.g., 'people')
    * @param {string} sourcePath - Source path in Team-Guidebook
    */
-  const linkCollection = (collectionName, sourcePath) => {
+  const linkCollection = async (collectionName, sourcePath) => {
     const source = path.resolve(teamGuidebookPath, sourcePath);
     const target = path.resolve(contentDir, collectionName);
 
@@ -219,6 +219,7 @@ const setupContentCollections = (contentRoot) => {
     }
 
     // Remove existing symlink or directory
+    // CRITICAL: Must remove before creating new symlink, especially in CI environments
     if (exists(target)) {
       try {
         const stat = fs.lstatSync(target);
@@ -229,15 +230,68 @@ const setupContentCollections = (contentRoot) => {
             : path.resolve(path.dirname(target), existingTarget);
           if (resolvedExisting === source) {
             log(`Reusing existing symlink: ${collectionName} -> ${sourcePath}`);
-            return;
+            // Verify the symlink actually works
+            try {
+              const testFiles = fs.readdirSync(target);
+              log(`  Verified: symlink is valid and accessible (${testFiles.length} items)`);
+              return;
+            } catch (verifyErr) {
+              log(`  Warning: symlink exists but is broken (${verifyErr.message}), will recreate`);
+            }
+          } else {
+            log(`Removing existing symlink with different target: ${existingTarget}`);
           }
-          log(`Removing existing symlink with different target: ${existingTarget}`);
         } else {
-          log(`Removing existing directory/file: ${target}`);
+          log(`Removing existing directory/file: ${target} (isDirectory: ${stat.isDirectory()}, isFile: ${stat.isFile()})`);
         }
-        fs.rmSync(target, { recursive: true, force: true });
+        
+        // Force remove with multiple attempts if needed
+        let removed = false;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            // Try unlink first for symlinks, then rmSync for directories
+            if (stat.isSymbolicLink()) {
+              fs.unlinkSync(target);
+            } else {
+              fs.rmSync(target, { recursive: true, force: true });
+            }
+            removed = true;
+            break;
+          } catch (rmErr) {
+            if (attempt < 4) {
+              log(`  Removal attempt ${attempt + 1} failed: ${rmErr.message}, retrying...`);
+              await sleep(200 * (attempt + 1)); // Exponential backoff
+            } else {
+              error(`  All removal attempts failed. Last error: ${rmErr.message}`);
+              throw rmErr;
+            }
+          }
+        }
+        
+        if (removed) {
+          // Wait a bit and verify it's actually gone
+          await sleep(50);
+          if (exists(target)) {
+            error(`  ERROR: ${target} still exists after removal!`);
+            // Last resort: try to remove parent directory and recreate
+            try {
+              const parentDir = path.dirname(target);
+              if (exists(parentDir)) {
+                fs.rmSync(target, { recursive: true, force: true, maxRetries: 3 });
+                await sleep(100);
+              }
+            } catch (lastErr) {
+              error(`  Final removal attempt also failed: ${lastErr.message}`);
+              throw new Error(`Cannot remove ${target} - blocking symlink creation`);
+            }
+          } else {
+            log(`  ✓ Successfully removed ${target}`);
+          }
+        }
       } catch (err) {
-        error(`Warning: Could not remove existing ${target}: ${err.message}`);
+        error(`Failed to remove existing ${target}: ${err.message}`);
+        error(`  This will prevent symlink creation. Aborting ${collectionName} setup.`);
+        return;
       }
     }
 
@@ -246,25 +300,50 @@ const setupContentCollections = (contentRoot) => {
       fs.symlinkSync(source, target, 'dir');
       log(`✓ Linked ${collectionName} collection: ${target} -> ${sourcePath}`);
       
-      // Verify the symlink was created correctly
+      // Verify the symlink was created correctly and is accessible
       if (exists(target)) {
         const stat = fs.lstatSync(target);
         if (stat.isSymbolicLink()) {
           const actualTarget = fs.readlinkSync(target);
           log(`  Verified: symlink points to ${actualTarget}`);
+          
+          // Test if we can actually read from the symlink
+          try {
+            const testFiles = fs.readdirSync(target);
+            log(`  Verified: symlink is accessible (${testFiles.length} items)`);
+          } catch (readErr) {
+            error(`  ERROR: Symlink exists but cannot read from it: ${readErr.message}`);
+            error(`  Falling back to copy instead of symlink`);
+            // Remove broken symlink and copy instead
+            fs.unlinkSync(target);
+            fs.cpSync(source, target, { recursive: true });
+            log(`  Copied ${collectionName} collection instead of symlink`);
+          }
         } else {
           error(`  Warning: ${target} exists but is not a symlink`);
         }
+      } else {
+        error(`  ERROR: Symlink creation reported success but target does not exist`);
       }
     } catch (err) {
       error(`Failed to create symlink for ${collectionName}: ${err.message}`);
       error(`  Source: ${source}`);
       error(`  Target: ${target}`);
-      // Try to provide more context
-      if (err.code === 'EEXIST') {
-        error(`  Target already exists (this should have been handled above)`);
-      } else if (err.code === 'EACCES') {
-        error(`  Permission denied - check file permissions`);
+      
+      // If symlink fails, try copying as fallback (especially for CI environments)
+      if (err.code === 'EEXIST' || err.code === 'EACCES' || err.code === 'EPERM') {
+        log(`  Attempting to copy instead of symlink (CI environment compatibility)...`);
+        try {
+          // Ensure target is removed first
+          if (exists(target)) {
+            fs.rmSync(target, { recursive: true, force: true });
+            await sleep(50); // Small delay
+          }
+          fs.cpSync(source, target, { recursive: true });
+          log(`  ✓ Copied ${collectionName} collection: ${target} <- ${sourcePath}`);
+        } catch (copyErr) {
+          error(`  Failed to copy as fallback: ${copyErr.message}`);
+        }
       }
     }
   };
@@ -273,18 +352,19 @@ const setupContentCollections = (contentRoot) => {
   
   // Map collections to Team-Guidebook directories
   // Note: News requires custom loader (handled separately in src/content/loaders/)
-  linkCollection('people', '通讯录');
-  linkCollection('projects', '图书馆/项目');
+  // Use async/await to ensure proper sequencing
+  await linkCollection('people', '通讯录');
+  await linkCollection('projects', '图书馆/项目');
   
   // Library: We need to include 图书馆/** but exclude 项目/ and 文献/
   // Since Astro Content Collections doesn't support glob exclusions natively,
   // we create a symlink to the entire 图书馆 directory.
   // The exclusion will be handled at query time or via a custom loader.
   // Alternative: Create individual symlinks for each subdirectory (more complex)
-  linkCollection('library', '图书馆');
+  await linkCollection('library', '图书馆');
   
   // Publications: map to 图书馆/文献 (short-term, markdown-based)
-  linkCollection('publications', '图书馆/文献');
+  await linkCollection('publications', '图书馆/文献');
   
   // Note: News collection requires a custom loader to extract bullet items
   // from Daily Notes (档案馆/YYYY-MM-DD.md). This will be implemented
@@ -293,7 +373,7 @@ const setupContentCollections = (contentRoot) => {
   log('Content Collections symlinks setup completed');
 };
 
-const main = () => {
+const main = async () => {
   const source = resolveSource();
   let contentRoot = null;
 
@@ -301,7 +381,7 @@ const main = () => {
     linkSource(source);
     contentRoot = dest; // .content points to source
     syncAttachments(contentRoot);
-    setupContentCollections(contentRoot);
+    await setupContentCollections(contentRoot);
     return;
   }
 
@@ -310,7 +390,7 @@ const main = () => {
     if (cloned) {
       contentRoot = dest; // .content is the clone destination
       syncAttachments(contentRoot);
-      setupContentCollections(contentRoot);
+      await setupContentCollections(contentRoot);
       return;
     }
     // Clone failed, try fallback
@@ -322,7 +402,7 @@ const main = () => {
     log(`Using fallback content source: ${fallback}`);
     contentRoot = fallback;
     syncAttachments(contentRoot);
-    setupContentCollections(contentRoot);
+    await setupContentCollections(contentRoot);
     return;
   }
 
@@ -330,5 +410,9 @@ const main = () => {
   process.exit(1);
 };
 
-main();
+main().catch((err) => {
+  error(`Fatal error: ${err.message}`);
+  console.error(err);
+  process.exit(1);
+});
 
