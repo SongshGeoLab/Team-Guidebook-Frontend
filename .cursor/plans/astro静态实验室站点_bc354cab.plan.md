@@ -58,9 +58,9 @@ todos:
     dependencies:
       - i18n-routing
       - content-collections
-  - id: ci-gh-pages
-    content: 配置 GitHub Actions：拉取内容仓库 -> build -> pagefind -> 部署到 GitHub Pages
-    status: pending
+  - id: vercel-deployment
+    content: 配置 Vercel 部署：创建 vercel.json 配置文件，设置环境变量（CONTENT_REPO_URL 等），确保构建流程（拉取内容仓库 -> build -> pagefind）在 Vercel 上正常工作
+    status: completed
     dependencies:
       - content-sync-strategy
       - search-pagefind
@@ -89,8 +89,6 @@ flowchart TD
   ciContent --> astroBuild[Astro Build]
   astroBuild --> dist[静态产物]
 ```
-
-
 
 ## 内容仓库结构建议（适配 Obsidian）
 
@@ -149,4 +147,12 @@ flowchart TD
 
 - 重点在于**目录树生成**。由于 Obsidian 是文件夹嵌套结构，需要递归扫描 `Team-Guidebook/图书馆/**` 生成侧边栏导航树，并让 WikiLinks 默认指向 Library。
 
-### 8) 评论、搜索、CI/CD
+### 8) 评论、搜索、部署
+
+- **评论系统**：已集成 Giscus（基于 GitHub Discussions）
+- **搜索系统**：已集成 Pagefind（构建后生成全文搜索索引）
+- **部署**：已配置 Vercel 部署
+  - 创建 `vercel.json` 配置文件
+  - 构建流程：`prebuild` (内容同步) -> `build` (Astro 构建) -> `postbuild` (Pagefind 索引)
+  - 环境变量：`CONTENT_REPO_URL`、`CONTENT_REPO_REF`、Giscus 相关配置
+  - 详细说明见 `README.md` 的 Deployment (Vercel) 部分

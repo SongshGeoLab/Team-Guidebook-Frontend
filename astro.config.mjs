@@ -68,7 +68,7 @@ const wikiLinkWithLocale = () => {
 // https://astro.build/config
 export default defineConfig({
   redirects: {
-    '/': '/zh/'
+    '/': '/en/'
   },
   integrations: [react()],
   vite: {

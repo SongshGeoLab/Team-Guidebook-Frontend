@@ -84,10 +84,26 @@ const linkSource = (source) => {
 
 const cloneSource = () => {
   cleanDest(null);
-  const args = ['clone', '--depth=1', '--branch', repoRef, repoUrl, dest];
-  log(`Cloning content via: git ${args.join(' ')}`);
-  execFileSync('git', args, { stdio: 'inherit' });
-  log(`Cloned ${repoUrl} @ ${repoRef} into ${dest}`);
+  
+  // Support GitHub token for HTTPS URLs (private repos)
+  let finalRepoUrl = repoUrl;
+  const githubToken = process.env.GITHUB_TOKEN;
+  if (githubToken && repoUrl.startsWith('https://github.com/')) {
+    // Insert token into URL: https://github.com/user/repo -> https://token@github.com/user/repo
+    finalRepoUrl = repoUrl.replace('https://github.com/', `https://${githubToken}@github.com/`);
+    log('Using GITHUB_TOKEN for authentication');
+  }
+  
+  const args = ['clone', '--depth=1', '--branch', repoRef, finalRepoUrl, dest];
+  log(`Cloning content via: git clone --depth=1 --branch ${repoRef} <repo> ${dest}`);
+  try {
+    execFileSync('git', args, { stdio: 'inherit' });
+    log(`Cloned ${repoUrl} @ ${repoRef} into ${dest}`);
+    return true;
+  } catch (err) {
+    error(`Failed to clone ${repoUrl}: ${err.message}`);
+    return false;
+  }
 };
 
 /**
@@ -249,11 +265,15 @@ const main = () => {
   }
 
   if (repoUrl) {
-    cloneSource();
-    contentRoot = dest; // .content is the clone destination
-    syncAttachments(contentRoot);
-    setupContentCollections(contentRoot);
-    return;
+    const cloned = cloneSource();
+    if (cloned) {
+      contentRoot = dest; // .content is the clone destination
+      syncAttachments(contentRoot);
+      setupContentCollections(contentRoot);
+      return;
+    }
+    // Clone failed, try fallback
+    log(`Clone failed, attempting to use local fallback...`);
   }
 
   // Fallback: use local Team-Guidebook if it exists
