@@ -220,7 +220,9 @@ const setupContentCollections = async (contentRoot) => {
 
     // Remove existing symlink or directory
     // CRITICAL: Must remove before creating new symlink, especially in CI environments
+    // Always check and remove, even if it seems like it shouldn't exist
     if (exists(target)) {
+      log(`  Target already exists, removing: ${target}`);
       try {
         const stat = fs.lstatSync(target);
         if (stat.isSymbolicLink()) {
@@ -249,11 +251,28 @@ const setupContentCollections = async (contentRoot) => {
         let removed = false;
         for (let attempt = 0; attempt < 5; attempt++) {
           try {
-            // Try unlink first for symlinks, then rmSync for directories
-            if (stat.isSymbolicLink()) {
-              fs.unlinkSync(target);
+            // Re-check stat on each attempt (might have changed)
+            if (exists(target)) {
+              const currentStat = fs.lstatSync(target);
+              // Try unlink first for symlinks, then rmSync for directories/files
+              if (currentStat.isSymbolicLink()) {
+                log(`  Attempt ${attempt + 1}: Removing symlink`);
+                fs.unlinkSync(target);
+              } else if (currentStat.isDirectory()) {
+                log(`  Attempt ${attempt + 1}: Removing directory`);
+                fs.rmSync(target, { recursive: true, force: true });
+              } else if (currentStat.isFile()) {
+                log(`  Attempt ${attempt + 1}: Removing file`);
+                fs.unlinkSync(target);
+              } else {
+                log(`  Attempt ${attempt + 1}: Removing unknown type`);
+                fs.rmSync(target, { recursive: true, force: true });
+              }
             } else {
-              fs.rmSync(target, { recursive: true, force: true });
+              // Target doesn't exist anymore, consider it removed
+              log(`  Target no longer exists (removed by previous attempt)`);
+              removed = true;
+              break;
             }
             removed = true;
             break;
@@ -334,15 +353,83 @@ const setupContentCollections = async (contentRoot) => {
       if (err.code === 'EEXIST' || err.code === 'EACCES' || err.code === 'EPERM') {
         log(`  Attempting to copy instead of symlink (CI environment compatibility)...`);
         try {
-          // Ensure target is removed first
+          // CRITICAL: Force remove target first, regardless of type
+          // This is a fallback, so we need to be extra aggressive about removal
           if (exists(target)) {
-            fs.rmSync(target, { recursive: true, force: true });
-            await sleep(50); // Small delay
+            log(`  Force removing existing target before copy: ${target}`);
+            
+            // Try multiple removal strategies
+            for (let removalAttempt = 0; removalAttempt < 5; removalAttempt++) {
+              try {
+                if (!exists(target)) {
+                  log(`  Target already removed`);
+                  break;
+                }
+                
+                const targetStat = fs.lstatSync(target);
+                log(`  Removal attempt ${removalAttempt + 1}: Type is symlink=${targetStat.isSymbolicLink()}, dir=${targetStat.isDirectory()}, file=${targetStat.isFile()}`);
+                
+                if (targetStat.isSymbolicLink()) {
+                  fs.unlinkSync(target);
+                } else if (targetStat.isDirectory()) {
+                  fs.rmSync(target, { recursive: true, force: true });
+                } else if (targetStat.isFile()) {
+                  fs.unlinkSync(target);
+                } else {
+                  // Unknown type, try both
+                  try {
+                    fs.unlinkSync(target);
+                  } catch {
+                    fs.rmSync(target, { recursive: true, force: true });
+                  }
+                }
+                
+                await sleep(100);
+                
+                // Verify removal
+                if (!exists(target)) {
+                  log(`  ✓ Target successfully removed`);
+                  break;
+                } else {
+                  log(`  Warning: Target still exists after removal attempt ${removalAttempt + 1}`);
+                  if (removalAttempt < 4) {
+                    await sleep(200 * (removalAttempt + 1));
+                  }
+                }
+              } catch (rmErr) {
+                if (removalAttempt < 4) {
+                  log(`  Removal attempt ${removalAttempt + 1} failed: ${rmErr.message}, retrying...`);
+                  await sleep(200 * (removalAttempt + 1));
+                } else {
+                  error(`  All removal attempts failed: ${rmErr.message}`);
+                  throw new Error(`Cannot remove ${target} for copy fallback: ${rmErr.message}`);
+                }
+              }
+            }
+            
+            // Final check
+            if (exists(target)) {
+              throw new Error(`Target ${target} still exists after all removal attempts - cannot proceed with copy`);
+            }
           }
+          
+          // Now copy
+          log(`  Copying ${source} to ${target}...`);
           fs.cpSync(source, target, { recursive: true });
           log(`  ✓ Copied ${collectionName} collection: ${target} <- ${sourcePath}`);
+          
+          // Verify copy succeeded
+          if (exists(target)) {
+            const copiedFiles = fs.readdirSync(target);
+            log(`  ✓ Copy verified: ${copiedFiles.length} items`);
+          } else {
+            throw new Error(`Copy reported success but target does not exist`);
+          }
         } catch (copyErr) {
           error(`  Failed to copy as fallback: ${copyErr.message}`);
+          error(`  Source: ${source}`);
+          error(`  Target: ${target}`);
+          // Don't throw - allow build to continue, but collection will be empty
         }
       }
     }
