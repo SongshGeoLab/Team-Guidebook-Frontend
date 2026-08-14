@@ -35,14 +35,14 @@ const ATTACHMENTS_ROOT = 'public/attachments';
  * Scan the content on disk once and build the lookup tables.
  *
  * @returns {{
- *   slugs: Set<string>,
+ *   slugs: Map<string, string>,
  *   byBasename: Map<string, string>,
  *   attachments: Map<string, string>,
  *   collisions: Map<string, string[]>
  * }}
  */
 export function buildContentIndex(cwd = process.cwd()) {
-  const slugs = new Set();
+  const slugs = new Map(); // lowercased path -> on-disk path
   const byBasename = new Map();
   const collisions = new Map();
   const attachments = new Map();
@@ -74,7 +74,7 @@ export function buildContentIndex(cwd = process.cwd()) {
     }
 
     const slug = file.replace(/\.md$/, '');
-    slugs.add(slug.toLowerCase());
+    slugs.set(slug.toLowerCase(), slug);
 
     const basename = slug.split('/').pop();
     const key = basename.toLowerCase();
@@ -173,6 +173,16 @@ export default function remarkObsidianLinks(options = {}) {
             parts.push({ type: 'text', value: node.value.slice(cursor, match.index) });
           }
           const { target, alias } = parseTarget(match[1]);
+
+          // `![[Some Note#Heading]]` is a *note* transclusion, not an image.
+          // Emitting an <img> for it produced a permanently broken image; leave
+          // the source text alone until transclusion is actually supported.
+          if (!isImageTarget(target)) {
+            parts.push({ type: 'text', value: match[0] });
+            cursor = match.index + match[0].length;
+            continue;
+          }
+
           parts.push({
             type: 'image',
             url: resolveAttachment(target, index),
@@ -252,11 +262,14 @@ function resolveSlug(rawTarget, index) {
   // path `[[图书馆/词条/Git]]` supplies one segment too many.
   const target = rawTarget.replace(/^图书馆\//, '');
 
-  // `[[词条/Git]]` — an explicit path.
-  if (index.slugs.has(target.toLowerCase())) {
-    // Recover the on-disk casing rather than trusting what the author typed.
-    return index.byBasename.get(target.split('/').pop().toLowerCase()) ?? target;
+  // `[[词条/Git]]` — an explicit path. Look it up as a path and STOP: falling
+  // back to the basename here meant `[[专栏/Git]]`, whose directory does not
+  // exist, silently resolved to 词条/Git — a different page, with no warning.
+  // A directory the author spelled out is part of what they asked for.
+  if (target.includes('/')) {
+    return index.slugs.get(target.toLowerCase());
   }
+
   // `[[Git]]` — Obsidian's shortest unique filename.
   return index.byBasename.get(target.toLowerCase());
 }

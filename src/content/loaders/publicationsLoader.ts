@@ -116,7 +116,12 @@ function extractBibEntries(bibContent: string): Record<string, string> {
  * @param bibKey - BibTeX citation key
  * @param originalBibtex - Original BibTeX string for this entry (optional)
  */
-function parseBibEntry(entry: any, bibKey: string, originalBibtex?: string): PublicationItem | null {
+function parseBibEntry(
+  entry: any,
+  bibKey: string,
+  originalBibtex?: string,
+  warn: (message: string) => void = () => {}
+): PublicationItem | null {
   try {
     // Extract basic fields
     const title = entry.title || entry['title'] || '';
@@ -165,19 +170,34 @@ function parseBibEntry(entry: any, bibKey: string, originalBibtex?: string): Pub
     // Zotero exports `file = {Name:/Users/.../paper.pdf:application/pdf}` — an
     // absolute local path that is meaningless as a web URL, so only accept
     // values that can actually be served.
-    const rawPdf = String(entry.file || entry.pdf || '');
+    // citation-js drops BibTeX's `file` field entirely, so read it back out of
+    // the original entry text we already keep for the "Copy BibTeX" button.
+    const fileFromBibtex = originalBibtex?.match(/^\s*(?:file|pdf)\s*=\s*\{([^}]*)\}/im)?.[1] ?? '';
+    const rawPdf = String(entry.file || entry.pdf || fileFromBibtex || '');
     const pdf = /^(https?:\/\/|\/)/.test(rawPdf) ? rawPdf : '';
+    if (rawPdf && !pdf) {
+      // Silently dropping it is the very failure mode this loader was fixed for.
+      warn(
+        `[publications] ${bibKey}: ignoring unusable pdf/file value ` +
+        `"${rawPdf.slice(0, 60)}" — only http(s) URLs and site-absolute paths are served`
+      );
+    }
 
     // Extract tags from keywords or custom fields.
     // NOTE: Zotero writes `keywords = {English}` on every record in this vault,
     // which produced a single meaningless facet for the whole publication list.
     // Language names are dropped so the filter reflects real topics.
     let tags: string[] = [];
-    if (entry.keywords) {
-      if (Array.isArray(entry.keywords)) {
-        tags = entry.keywords.map((k: unknown) => String(k).trim()).filter(Boolean);
-      } else if (typeof entry.keywords === 'string') {
-        tags = entry.keywords.split(/[,;]/).map((k: string) => k.trim()).filter(Boolean);
+    // citation-js exposes this as `keyword` (singular). Reading `keywords`
+    // meant tags were ALWAYS empty — which is why the topic filter offered
+    // nothing, a symptom previously misattributed to the language-name filter
+    // below.
+    const rawKeywords = entry.keyword ?? entry.keywords;
+    if (rawKeywords) {
+      if (Array.isArray(rawKeywords)) {
+        tags = rawKeywords.map((k: unknown) => String(k).trim()).filter(Boolean);
+      } else if (typeof rawKeywords === 'string') {
+        tags = rawKeywords.split(/[,;]/).map((k: string) => k.trim()).filter(Boolean);
       }
       tags = tags.filter((tag) => !LANGUAGE_KEYWORDS.has(tag.toLowerCase()));
     }
@@ -216,10 +236,12 @@ export function publicationsLoader(): Loader {
     load: async (context: LoaderContext) => {
       const contentRoot = getContentRoot();
 
+      const loadAll = async () => {
       // Same reasoning as newsLoader: full rebuild each run, so clear first.
       // Otherwise an entry deleted from the .bib stayed on the publications
       // page indefinitely.
       context.store.clear();
+
       
       // Try 图书馆/文献/ first, then fallback to 图书馆/ root
       const publicationsDir = path.join(contentRoot, '图书馆', '文献');
@@ -323,7 +345,9 @@ export function publicationsLoader(): Loader {
               }
             }
             
-            const publication = parseBibEntry(entry, bibKey, bibtexString);
+            const publication = parseBibEntry(entry, bibKey, bibtexString, (m) =>
+              context.logger.warn(m)
+            );
 
             if (publication) {
               context.store.set({
@@ -351,6 +375,23 @@ export function publicationsLoader(): Loader {
           );
           // Continue processing other files
         }
+      }
+      };
+
+      await loadAll();
+
+      // KNOWN LIMITATION: re-running the loader refreshes the store, but Astro
+      // does not re-render the affected routes from it, so editing content in
+      // dev still needs a server restart. Measured, not assumed: changing a
+      // fixture daily note with the server up leaves the page unchanged.
+      // The hook is kept because the loader is now re-entrant, which is the
+      // prerequisite for fixing this properly.
+      const bibRoot = path.join(contentRoot, '图书馆');
+      context.watcher?.add(bibRoot);
+      for (const event of ['change', 'add', 'unlink'] as const) {
+        context.watcher?.on(event, (changedPath: string) => {
+          if (changedPath.endsWith('.bib')) void loadAll();
+        });
       }
     }
   };

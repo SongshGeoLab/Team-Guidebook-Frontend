@@ -9,9 +9,15 @@ interface Props {
   title: string;
   description?: string;
   lang?: string;
+  /**
+   * Pages that exist outside the locale trees (the 404). They have no locale
+   * twin, so emitting canonical/hreflang for them points at URLs that are never
+   * built — /zh/404/ does not exist.
+   */
+  noIndex?: boolean;
 }
 
-const { title, description = "Lab Website", lang = "zh" } = Astro.props;
+const { title, description = "Lab Website", lang = "zh", noIndex = false } = Astro.props;
 
 // LOCALES / DEFAULT_LOCALE come from the i18n module so the locale set has one
 // definition; redeclaring them here is how the two drift apart.
@@ -24,8 +30,8 @@ const pathWithoutLocale = currentPath.replace(/^\/(zh|en)(?=\/|$)/, '') || '/';
 const localeUrl = (locale: string) =>
   new URL(`/${locale}${pathWithoutLocale}`.replace(/\/{2,}/g, '/'), Astro.site).href;
 
-const canonical = Astro.site ? localeUrl(lang) : undefined;
-const alternates = Astro.site
+const canonical = Astro.site && !noIndex ? localeUrl(lang) : undefined;
+const alternates = Astro.site && !noIndex
   ? LOCALES.map((locale) => ({ locale, href: localeUrl(locale) }))
   : [];
 ---
@@ -40,6 +46,7 @@ const alternates = Astro.site
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+    {noIndex && <meta name="robots" content="noindex" />}
 
     {canonical && <link rel="canonical" href={canonical} />}
     {alternates.map(({ locale, href }) => (

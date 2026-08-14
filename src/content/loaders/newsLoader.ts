@@ -77,6 +77,7 @@ export function newsLoader(): Loader {
       const contentRoot = getContentRoot();
       const newsDir = path.join(contentRoot, '档案馆');
 
+      const loadAll = async () => {
       // Astro persists the store across runs (.astro/ and node_modules/.astro).
       // This loader rebuilds every entry from scratch, so without clearing,
       // deleting a bullet from a daily note left its entry on the site forever
@@ -84,9 +85,6 @@ export function newsLoader(): Loader {
       // cache by hand.
       context.store.clear();
 
-      // Without a watcher, editing 档案馆/*.md in dev changed nothing until the
-      // server was restarted.
-      context.watcher?.add(newsDir);
       const aliasMap = loadPeopleMap(contentRoot);
 
       if (!fs.existsSync(newsDir)) {
@@ -182,7 +180,8 @@ export function newsLoader(): Loader {
 
             context.store.set({
               id,
-              // Lets Astro skip unchanged entries instead of re-rendering all.
+              // Recorded for change detection by consumers; note this loader
+              // clears the store each run, so it cannot skip work by itself.
               digest: context.generateDigest?.(JSON.stringify({ bulletContent, date, file })),
               data: {
                 date,
@@ -195,6 +194,22 @@ export function newsLoader(): Loader {
             });
           }
         }
+      }
+      };
+
+      await loadAll();
+
+      // KNOWN LIMITATION: re-running the loader refreshes the store, but Astro
+      // does not re-render the affected routes from it, so editing content in
+      // dev still needs a server restart. Measured, not assumed: changing a
+      // fixture daily note with the server up leaves the page unchanged.
+      // The hook is kept because the loader is now re-entrant, which is the
+      // prerequisite for fixing this properly.
+      context.watcher?.add(newsDir);
+      for (const event of ['change', 'add', 'unlink'] as const) {
+        context.watcher?.on(event, (changedPath: string) => {
+          if (changedPath.startsWith(newsDir)) void loadAll();
+        });
       }
     }
   };

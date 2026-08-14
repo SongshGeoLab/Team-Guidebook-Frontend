@@ -72,7 +72,7 @@ export default function rehypeCallouts() {
           const normalizedType = CALLOUT_TYPES[calloutType] || CALLOUT_TYPES[calloutType.toUpperCase()] || 'note';
 
           // Already processed (idempotent guard: the aside path can be revisited)
-          if (node.children?.[0]?.properties?.class === 'admonition-title') return;
+          if (node.children?.[0]?.properties?.className?.includes?.('admonition-title')) return;
 
           // Extract title from data-title attribute or from first child if it's a text node
           let title = node.properties?.dataTitle || node.properties?.['data-title'] || '';
@@ -103,7 +103,11 @@ export default function rehypeCallouts() {
           // Transform to callout HTML structure
           node.tagName = 'aside';
           node.properties = {
-            class: `admonition admonition-${normalizedType}`,
+            // Canonical hast: `className` as an array, not a `class` string.
+            // A `class` property is not a hast property name, so
+            // rehype-sanitize treats it as unknown and drops it — which is how
+            // the news pipeline lost all callout styling.
+            className: ['admonition', `admonition-${normalizedType}`],
             'data-callout': normalizedType
           };
 
@@ -115,7 +119,7 @@ export default function rehypeCallouts() {
               type: 'element',
               tagName: 'p',
               properties: {
-                class: 'admonition-title'
+                className: ['admonition-title']
               },
               children: [
                 {

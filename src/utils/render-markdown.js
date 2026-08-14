@@ -25,6 +25,7 @@ import rehypeStringify from 'rehype-stringify';
 import wikiLink from 'remark-wiki-link';
 
 import remarkObsidianCallouts from './remark-obsidian-callouts.js';
+import rehypeCallouts from './rehype-callouts.js';
 import remarkObsidianLinks, { buildContentIndex } from './obsidian-links.js';
 import remarkReviveDirectives from './remark-revive-directives.js';
 
@@ -61,6 +62,12 @@ function allowClasses(tag, classNames, extraAttributes = []) {
   ];
 }
 
+/** admonition-<type> for every callout type rehype-callouts can emit. */
+const CALLOUT_CLASSES = [
+  'note', 'abstract', 'info', 'tip', 'success', 'question',
+  'warning', 'failure', 'danger', 'bug', 'example', 'quote'
+].map((t) => `admonition-${t}`);
+
 const schema = {
   ...defaultSchema,
   strip: ['script', 'style'],
@@ -70,7 +77,15 @@ const schema = {
     a: allowClasses('a', ['internal-link', 'internal-link-broken'], ['title']),
     img: allowClasses('img', ['obsidian-image'], ['loading', 'decoding']),
     span: allowClasses('span', ['internal-link', 'internal-link-broken'], ['title']),
-    aside: [['className', /^admonition/], ['dataCallout', /.*/], ['dataTitle', /.*/]]
+    // Explicit values, not a regex: hast-util-sanitize matches className
+    // entries by equality, so a regex silently allowed nothing and the callout
+    // lost its styling class.
+    aside: [
+      ['className', 'admonition', ...CALLOUT_CLASSES],
+      ['dataCallout', /.*/],
+      ['dataTitle', /.*/]
+    ],
+    p: allowClasses('p', ['admonition-title'])
   },
   protocols: {
     ...defaultSchema.protocols,
@@ -95,6 +110,9 @@ function createProcessor(options = {}) {
     .use(wikiLink, { aliasDivider: '|', pageResolver: (/** @type {string} */ n) => [n] })
     .use(remarkObsidianLinks({ index }))
     .use(remarkRehype)
+    // Without this the callout title element is never built, so a
+    // `> [!INFO] Title` bullet lost its title entirely.
+    .use(rehypeCallouts)
     .use(rehypeSanitize, schema)
     .use(rehypeStringify);
 }

@@ -22,11 +22,19 @@
 
 #### 必需的环境变量
 
-- **`CONTENT_REPO_URL`**: 内容仓库的 Git URL
-  - 公开仓库：`https://github.com/username/Team-Guidebook.git`
-  - 私有仓库：`https://github.com/username/Team-Guidebook.git`（需要配置部署密钥，见下方）
+- **`CONTENT_REPO_URL`**: 内容仓库的 **HTTPS** URL，例如
+  `https://github.com/username/Team-Guidebook.git`。
+  不要用 SSH URL：`scripts/setup-content.mjs` 只对 `https://github.com/` 开头的
+  地址注入鉴权，SSH 形式在 Vercel 上会**静默失败**。
+
+- **`GITHUB_TOKEN`** (私有内容仓库必需): 对内容仓库有读权限的 token。
+  Vercel 的 GitHub App 只能访问项目自身的仓库，因此私有内容仓库必须单独配置
+  （见下方第 3 节）。建议使用**仅对内容仓库只读**的 fine-grained token。
 
 - **`CONTENT_REPO_REF`** (可选): 分支或标签名称，默认为 `main`
+
+- **`SITE_URL`** (可选): 覆盖 canonical / sitemap 使用的站点源地址，
+  绑定自定义域名后设置。
 
 #### 可选的环境变量（Giscus 评论系统）
 
@@ -34,6 +42,7 @@
 - **`PUBLIC_GISCUS_REPO_ID`**: Giscus 仓库 ID
 - **`PUBLIC_GISCUS_CATEGORY`**: 讨论分类名称
 - **`PUBLIC_GISCUS_CATEGORY_ID`**: 讨论分类 ID
+- **`PUBLIC_GISCUS_THEME`** (可选): Giscus 主题，默认 `preferred_color_scheme`
 
 详细配置说明见 [GISCUS_SETUP.md](./GISCUS_SETUP.md)
 

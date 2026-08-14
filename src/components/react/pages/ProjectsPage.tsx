@@ -78,7 +78,7 @@ export function ProjectsPage({ lang, projects, people = [] }: ProjectsPageProps)
 
               {project.people && project.people.length > 0 && (
                 <div className="text-sm text-gray-300">
-                  {(lang === 'zh' ? '参与人员' : 'Team') + ': '}
+                  {ui.project.participants[lang] + ': '}
                   {project.people.map((id) => peopleMap.get(id) || id).join(' / ')}
                 </div>
               )}
