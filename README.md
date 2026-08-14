@@ -115,3 +115,9 @@ If you need to manually trigger a release, you can:
    ```
 
 For more information, see the [Release Please documentation](https://github.com/googleapis/release-please).
+
+## License
+
+- **Code** — [MIT](./LICENSE).
+- **Content** — the prose and images sourced from the `Team-Guidebook` vault and
+  rendered into these pages are [CC BY 4.0](./LICENSE-CONTENT).

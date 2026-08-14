@@ -33,3 +33,9 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# AI assistant scratch state — plans and cached notes drift from reality fast.
+# .cursor/rules/ IS kept: it defines this project's coding standards.
+.cursor/cache/
+.cursor/plans/
+.vscode/
