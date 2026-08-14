@@ -1,0 +1,5 @@
+# Team Guidebook Lab Site
+User-agent: *
+Allow: /
+
+Sitemap: https://team-guidebook-frontend.vercel.app/sitemap-index.xml

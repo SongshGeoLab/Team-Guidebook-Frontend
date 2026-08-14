@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
+import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import wikiLink from 'remark-wiki-link';
 import remarkDirective from 'remark-directive';
@@ -21,7 +22,7 @@ export default defineConfig({
   redirects: {
     '/': '/en/'
   },
-  integrations: [react()],
+  integrations: [react(), sitemap()],
   vite: {
     plugins: [tailwindcss()],
     build: {

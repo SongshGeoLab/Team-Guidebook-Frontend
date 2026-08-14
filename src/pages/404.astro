@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Deliberately outside the /zh and /en trees: a 404 has to serve a visitor who
+// arrived at an unknown path, which by definition carries no reliable locale.
+// Both languages are shown rather than guessing.
+---
+
+<BaseLayout title="404 · 页面不存在 / Not Found" description="页面不存在 / Page not found" lang="zh">
+  <div class="max-w-2xl mx-auto py-20 text-center space-y-8">
+    <p class="text-7xl font-light text-teal-400/80">404</p>
+
+    <div class="space-y-2">
+      <h1 class="text-2xl font-light text-white">页面不存在</h1>
+      <p class="text-gray-400">
+        这个地址没有对应的页面。它可能已被移动或重命名。
+      </p>
+    </div>
+
+    <div class="space-y-2 pt-4 border-t border-white/10">
+      <h2 class="text-2xl font-light text-white">Page not found</h2>
+      <p class="text-gray-400">
+        There is no page at this address. It may have been moved or renamed.
+      </p>
+    </div>
+
+    <div class="flex flex-wrap gap-4 justify-center pt-4">
+      <a
+        href="/zh/"
+        class="rounded-full bg-white text-black hover:bg-teal-50 px-6 py-3 text-sm font-medium"
+      >
+        中文首页
+      </a>
+      <a
+        href="/en/"
+        class="rounded-full border border-white/20 text-white hover:bg-white/10 px-6 py-3 text-sm font-medium"
+      >
+        English home
+      </a>
+      <a
+        href="/zh/search/"
+        class="rounded-full border border-white/20 text-white hover:bg-white/10 px-6 py-3 text-sm font-medium"
+      >
+        搜索 / Search
+      </a>
+    </div>
+  </div>
+</BaseLayout>
