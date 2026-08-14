@@ -160,26 +160,60 @@ const linkSource = (source) => {
   }
 };
 
+/**
+ * Build a redactor for every secret that could reach a log line.
+ *
+ * Nothing derived from the token may be printed. `execFileSync` puts the whole
+ * argv into `err.message`, and git echoes the remote it was given, so a single
+ * failed clone used to be enough to publish the PAT into the build log.
+ */
+const makeRedactor = (secrets) => {
+  const patterns = secrets.filter(Boolean).filter((s) => s.length >= 8);
+  return (text) => {
+    let out = String(text ?? '');
+    for (const secret of patterns) out = out.split(secret).join('***');
+    // Belt and braces: catch token shapes we did not explicitly register.
+    return out.replace(/\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{16,}\b/g, '$1_***')
+      .replace(/\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, 'github_pat_***');
+  };
+};
+
 const cloneSource = () => {
   cleanDest(null);
-  
-  // Support GitHub token for HTTPS URLs (private repos)
-  let finalRepoUrl = repoUrl;
+
   const githubToken = process.env.GITHUB_TOKEN;
-  if (githubToken && repoUrl.startsWith('https://github.com/')) {
-    // Insert token into URL: https://github.com/user/repo -> https://token@github.com/user/repo
-    finalRepoUrl = repoUrl.replace('https://github.com/', `https://${githubToken}@github.com/`);
-    log('Using GITHUB_TOKEN for authentication');
+  const useToken = Boolean(githubToken) && repoUrl.startsWith('https://github.com/');
+
+  // The token goes in an HTTP header, NOT in the URL. Splicing it into the URL
+  // meant git persisted it into .content/.git/config and echoed it back in
+  // every error message.
+  const authHeader = useToken
+    ? Buffer.from(`x-access-token:${githubToken}`).toString('base64')
+    : null;
+
+  const redact = makeRedactor([githubToken, authHeader]);
+
+  const args = [];
+  if (useToken) {
+    // `-c` applies to this invocation only; it is never written to the repo config.
+    args.push('-c', `http.extraheader=AUTHORIZATION: basic ${authHeader}`);
+    log('Using GITHUB_TOKEN for authentication (via request header)');
   }
-  
-  const args = ['clone', '--depth=1', '--branch', repoRef, finalRepoUrl, dest];
+  args.push('clone', '--depth=1', '--branch', repoRef, repoUrl, dest);
+
   log(`Cloning content via: git clone --depth=1 --branch ${repoRef} <repo> ${dest}`);
   try {
-    execFileSync('git', args, { stdio: 'inherit' });
+    // NOT 'inherit': git's own stderr prints the remote and any credential
+    // prompt verbatim, so it must pass through the redactor before we emit it.
+    const stdout = execFileSync('git', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const text = stdout?.toString().trim();
+    if (text) log(redact(text));
     log(`Cloned ${repoUrl} @ ${repoRef} into ${dest}`);
     return true;
   } catch (err) {
-    error(`Failed to clone ${repoUrl}: ${err.message}`);
+    const stderr = err?.stderr?.toString().trim();
+    if (stderr) error(redact(stderr));
+    error(`Failed to clone ${repoUrl}: ${redact(err.message)}`);
     return false;
   }
 };
