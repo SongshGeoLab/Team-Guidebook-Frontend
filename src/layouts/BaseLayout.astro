@@ -11,6 +11,22 @@ interface Props {
 }
 
 const { title, description = "Lab Website", lang = "zh" } = Astro.props;
+
+const LOCALES = ['zh', 'en'];
+const DEFAULT_LOCALE = 'en'; // matches the `/` redirect in astro.config.mjs
+
+// `/zh/library/x` and `/en/library/x` are the same document in two locales.
+// Without canonical + hreflang, search engines see pure duplicate content —
+// the two trees currently render identical text (see issue #11).
+const currentPath = Astro.url.pathname;
+const pathWithoutLocale = currentPath.replace(/^\/(zh|en)(?=\/|$)/, '') || '/';
+const localeUrl = (locale: string) =>
+  new URL(`/${locale}${pathWithoutLocale}`.replace(/\/{2,}/g, '/'), Astro.site).href;
+
+const canonical = Astro.site ? localeUrl(lang) : undefined;
+const alternates = Astro.site
+  ? LOCALES.map((locale) => ({ locale, href: localeUrl(locale) }))
+  : [];
 ---
 
 <!doctype html>
@@ -18,10 +34,32 @@ const { title, description = "Lab Website", lang = "zh" } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
-    <meta name="viewport" content="width=device-width" />
+    <!-- initial-scale=1 stops iOS zooming the page on load -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+
+    {canonical && <link rel="canonical" href={canonical} />}
+    {alternates.map(({ locale, href }) => (
+      <link rel="alternate" hreflang={locale} href={href} />
+    ))}
+    {alternates.length > 0 && (
+      <link
+        rel="alternate"
+        hreflang="x-default"
+        href={alternates.find((a) => a.locale === DEFAULT_LOCALE)?.href}
+      />
+    )}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:locale" content={lang === 'zh' ? 'zh_CN' : 'en_US'} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
   </head>
   <!--
     NOTE: never put a bare `overflow-hidden` on <body>. When <html> has

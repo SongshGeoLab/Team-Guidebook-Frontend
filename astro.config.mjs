@@ -15,6 +15,9 @@ const contentIndex = buildContentIndex();
 
 // https://astro.build/config
 export default defineConfig({
+  // Required for absolute canonical / hreflang / OG URLs. Override with
+  // SITE_URL once a custom domain is in front of the Vercel deployment.
+  site: process.env.SITE_URL || 'https://team-guidebook-frontend.vercel.app',
   redirects: {
     '/': '/en/'
   },
