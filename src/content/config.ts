@@ -83,7 +83,7 @@ const publicationsSchema = z.object({
   title: z.string().describe('Publication title'),
   authors: z.array(z.string()).describe('Author names'),
   venue: z.string().optional().describe('Publication venue (journal, conference, etc.)'),
-  year: z.number().int().describe('Publication year'),
+  year: z.number().int().optional().describe('Publication year; absent when the entry has no parseable date'),
   bib_key: z.string().optional().describe('BibTeX key for citation'),
   bibtex: z.string().optional().describe('Original BibTeX entry string'),
   doi: z.string().url().optional().describe('DOI URL'),

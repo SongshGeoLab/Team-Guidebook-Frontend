@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 
 // Use createRequire to load CommonJS modules robustly in all environments
 const require = createRequire(import.meta.url);
@@ -14,7 +15,7 @@ interface PublicationItem {
   title: string;
   authors: string[];
   venue?: string;
-  year: number;
+  year?: number;
   bib_key?: string;
   bibtex?: string;
   doi?: string;
@@ -23,6 +24,9 @@ interface PublicationItem {
   publish: boolean;
   date?: Date;
 }
+
+/** Zotero writes these into `keywords`; they are not research topics. */
+const LANGUAGE_KEYWORDS = new Set(['english', 'chinese', '中文', '英文']);
 
 // Helper to resolve the content root (same as newsLoader)
 function getContentRoot() {
@@ -157,11 +161,17 @@ function parseBibEntry(entry: any, bibKey: string, originalBibtex?: string): Pub
     // Extract DOI
     const doi = entry.DOI || entry.doi || '';
 
-    // Extract PDF path (if stored in attachments)
-    // BibTeX might have a file field or custom field
-    const pdf = entry.file || entry.pdf || '';
+    // Extract PDF path (if stored in attachments).
+    // Zotero exports `file = {Name:/Users/.../paper.pdf:application/pdf}` — an
+    // absolute local path that is meaningless as a web URL, so only accept
+    // values that can actually be served.
+    const rawPdf = String(entry.file || entry.pdf || '');
+    const pdf = /^(https?:\/\/|\/)/.test(rawPdf) ? rawPdf : '';
 
-    // Extract tags from keywords or custom fields
+    // Extract tags from keywords or custom fields.
+    // NOTE: Zotero writes `keywords = {English}` on every record in this vault,
+    // which produced a single meaningless facet for the whole publication list.
+    // Language names are dropped so the filter reflects real topics.
     let tags: string[] = [];
     if (entry.keywords) {
       if (Array.isArray(entry.keywords)) {
@@ -169,6 +179,7 @@ function parseBibEntry(entry: any, bibKey: string, originalBibtex?: string): Pub
       } else if (typeof entry.keywords === 'string') {
         tags = entry.keywords.split(/[,;]/).map((k: string) => k.trim()).filter(Boolean);
       }
+      tags = tags.filter((tag) => !LANGUAGE_KEYWORDS.has(tag.toLowerCase()));
     }
 
     // Use bib_key as the ID
@@ -179,7 +190,10 @@ function parseBibEntry(entry: any, bibKey: string, originalBibtex?: string): Pub
       title,
       authors,
       venue: venue || undefined,
-      year: year || new Date().getFullYear(), // Fallback to current year if missing
+      // Do NOT fall back to the current year: that silently turned an entry
+      // with an unparseable date into a brand-new publication at the top of the
+      // list, with no log and no way for a reader to tell.
+      year: year || undefined,
       bib_key: bibKey,
       bibtex: originalBibtex || undefined, // Store original BibTeX for copying
       doi: doi ? (doi.startsWith('http') ? doi : `https://doi.org/${doi}`) : undefined,
@@ -278,7 +292,16 @@ export function publicationsLoader(): Loader {
 
           // Process each entry in the BibTeX file
           for (const entry of data) {
-            const bibKey = entry.id || entry['citation-key'] || `entry-${Math.random().toString(36).substr(2, 9)}`;
+            // Math.random() gave a keyless entry a different id, route and HTML
+            // on every build, breaking reproducible builds and any external link
+            // to it. Derive the id from the content instead.
+            const bibKey =
+              entry.id ||
+              entry['citation-key'] ||
+              `entry-${createHash('sha256')
+                .update(JSON.stringify([entry.title ?? '', entry.author ?? '', entry.issued ?? '']))
+                .digest('hex')
+                .slice(0, 9)}`;
             
             // Find matching BibTeX string for this entry
             const originalBibtex = bibEntries[bibKey] || '';

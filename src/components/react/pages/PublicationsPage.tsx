@@ -17,6 +17,10 @@ export function PublicationsPage({ lang, publications }: PublicationsPageProps) 
     [publications]
   );
 
+  // Entries with no parseable year used to vanish: the page renders only by
+  // iterating `years`, so they matched no bucket — while still counting toward
+  // `filtered.length`, which suppressed the empty state too. Result: a blank
+  // column with no explanation. They now get their own "n.d." group.
   const years = useMemo(
     () => Array.from(new Set(publications.map((p) => p.year).filter(Boolean) as number[])).sort((a, b) => b - a),
     [publications]
@@ -80,6 +84,22 @@ export function PublicationsPage({ lang, publications }: PublicationsPageProps) 
         </div>
 
         <div className="lg:col-span-3 space-y-12">
+          {(() => {
+            const undated = filtered.filter((p) => !p.year);
+            return undated.length > 0 ? (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-light text-white/70 border-b border-white/5 pb-2">
+                  {lang === 'zh' ? '年份不详' : 'n.d.'}
+                </h2>
+                <div className="space-y-4">
+                  {undated.map((pub) => (
+                    <CitationItem key={pub.id} publication={pub} />
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
+
           {years.map((year) => {
             const yearPubs = filtered.filter((p) => p.year === year);
             if (yearPubs.length === 0) return null;
