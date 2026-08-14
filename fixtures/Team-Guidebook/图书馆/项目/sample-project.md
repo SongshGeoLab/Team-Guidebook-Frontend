@@ -1,4 +1,5 @@
 ---
+publish: true
 id: sample-project
 title: Sample Project
 start_date: 2024-01-01

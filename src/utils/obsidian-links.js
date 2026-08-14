@@ -57,6 +57,12 @@ export function buildContentIndex(cwd = process.cwd()) {
   }
 
   for (const file of files) {
+    // 项目/ and 文献/ live under 图书馆/ but belong to the projects and
+    // publications collections; they get no library route. Keep this in step
+    // with src/utils/libraryEntries.ts.
+    const firstSegment = file.split('/')[0];
+    if (firstSegment === '项目' || firstSegment === '文献') continue;
+
     // Only index what actually gets a route. The library pages filter on
     // `publish !== false`, so indexing an unpublished entry would hand out a
     // link to a page that is never built — the same 404 in a new costume.

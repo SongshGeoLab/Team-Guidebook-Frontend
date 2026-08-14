@@ -1,14 +1,15 @@
 ---
 import { getCollection } from 'astro:content';
+import { getLibraryEntries } from '../../../utils/libraryEntries';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { LibraryPage } from '../../../components/react/pages/LibraryPage';
 
-const allLibrary = await getCollection('library', ({ data }) => data.publish !== false);
+const allLibrary = await getLibraryEntries();
 const items = allLibrary.map((item) => {
   const parts = item.id
     .replace(/\.md$/, '')
     .split('/')
-    .filter((p) => p && p !== '图书馆');
+    .filter((p) => p);
   const slug = parts.join('/');
 
   return {

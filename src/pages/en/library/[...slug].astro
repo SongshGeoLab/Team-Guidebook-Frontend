@@ -1,13 +1,14 @@
 ---
 import { getCollection } from 'astro:content';
+import { getLibraryEntries } from '../../../utils/libraryEntries';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { LibrarySidebar } from '../../../components/react/ui/LibrarySidebar';
 import { buildLibraryTree } from '../../../utils/libraryTree';
 
 export async function getStaticPaths() {
-  const library = await getCollection('library', ({ data }) => data.publish !== false);
+  const library = await getLibraryEntries();
   
-  return library.map((item) => {
+  const routes = library.map((item) => {
     // Convert file path to slug array
     // item.id is relative to src/content/library/, so it might be:
     // - "词条/Git.md" -> ["词条", "Git"]
@@ -38,6 +39,22 @@ export async function getStaticPaths() {
       props: { item },
     };
   });
+
+  // Two entries whose paths collapse to the same slug would otherwise fail the
+  // build with an opaque duplicate-route error. Name the culprits instead.
+  const seen = new Map();
+  for (const route of routes) {
+    const existing = seen.get(route.params.slug);
+    if (existing) {
+      throw new Error(
+        `Duplicate library slug "${route.params.slug}": ` +
+        `"${existing}" and "${route.props.item.id}" both map to it.`
+      );
+    }
+    seen.set(route.params.slug, route.props.item.id);
+  }
+
+  return routes;
 }
 
 const { item } = Astro.props;
@@ -58,12 +75,12 @@ if (slugParts[0] === '图书馆') {
 const currentSlug = slugParts.join('/');
 
 // Get all library items for sidebar
-const allLibrary = await getCollection('library', ({ data }) => data.publish !== false);
+const allLibrary = await getLibraryEntries();
 const libraryItems = allLibrary.map((libItem) => {
   const parts = libItem.id
     .replace(/\.md$/, '')
     .split('/')
-    .filter((p) => p && p !== '图书馆');
+    .filter((p) => p);
   const slug = parts.join('/');
   return {
     id: libItem.id,
