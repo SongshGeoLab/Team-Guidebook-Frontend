@@ -2,12 +2,5 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-  "framework": "astro",
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/en/"
-    }
-  ]
+  "framework": "astro"
 }
-

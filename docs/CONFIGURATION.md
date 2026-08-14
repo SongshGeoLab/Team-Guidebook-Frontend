@@ -2,9 +2,14 @@
 
 ## 私有仓库配置（SongshGeoLab/Team-Guidebook）
 
-### 推荐配置：使用 SSH（本地开发）
+### 本地开发：SSH 可用，但仅限本地
 
-由于你已经配置了 SSH key，推荐使用 SSH URL：
+如果本地已配置 SSH key，可以用 SSH URL。
+
+> ⚠️ **不要把 SSH URL 配到 Vercel 上**。`scripts/setup-content.mjs` 只对
+> `https://github.com/` 开头的 URL 注入鉴权头，SSH 形式在 CI 中会**静默失败**。
+> 部署环境请一律使用 HTTPS + `GITHUB_TOKEN`。
+
 
 **创建 `.env` 文件**（在项目根目录）：
 
@@ -26,7 +31,8 @@ CONTENT_REPO_REF=main
    - `CONTENT_REPO_URL=https://github.com/SongshGeoLab/Team-Guidebook.git`
    - `CONTENT_REPO_REF=main`（可选）
 
-Vercel 的 GitHub App 会自动处理私有仓库的认证，无需额外配置 token 或 SSH key。
+**更正**：Vercel 的 GitHub App 默认**只能访问当前项目仓库**，无法访问其他私有仓库。
+私有内容仓库需要单独配置 `GITHUB_TOKEN`，详见 `docs/VERCEL_DEPLOYMENT.md`。
 
 ## 本地测试步骤
 

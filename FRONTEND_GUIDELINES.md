@@ -7,7 +7,7 @@
 ## 1. 协作模式
 
 *   **后端职责 (我)**:
-    *   维护 `src/content/config.ts` (Schema 定义) 与各类 **Content Loaders**（把 Obsidian 内容映射为 collections）。
+    *   维护 `src/content.config.ts` (Schema 定义) 与各类 **Content Loaders**（把 Obsidian 内容映射为 collections）。
     *   采用 **Direct Map**：内容不强制整理为 `lab/zh/en`，而是直接读取 `.content/Team-Guidebook/` 的既有目录结构。
     *   负责 Markdown 的解析配置 (remark/rehype 插件)，确保 WikiLinks (`[[Link]]`) 和 Callouts 能正确转换为 HTML。
     *   提供清洗好的、类型安全的数据集合 (Collections)。
@@ -24,7 +24,7 @@
 - `people`: `.content/Team-Guidebook/通讯录/*.md`
 - `projects`: `.content/Team-Guidebook/图书馆/项目/*.md`
 - `library`: `.content/Team-Guidebook/图书馆/**/*.md`
-- `blog`（可选，阶段 2 才做独立栏目）：`.content/Team-Guidebook/公告板/博客/*.md`
+- `blog`：**尚未实现**（`src/content.config.ts` 只定义了 people / projects / news / library / publications）。阶段 2 才做独立栏目：`.content/Team-Guidebook/公告板/博客/*.md`
 
 ## 2. 数据接口 (Content Collections API)
 
@@ -120,14 +120,23 @@ interface NewsItem {
 *   **后端承诺**: 默认解析到 Library：`<a href="/[lang]/library/..." class="internal-link">`。
 *   **前端任务**: 为 `.internal-link` 类添加样式 (例如虚线下划线或特定颜色)，以区分普通外部链接。
 
-## 4.3 i18n 范围（阶段 1）
+## 4.3 i18n 范围（现状）
 
-- `/zh`：主站内容完整。
-- `/en`：先提供 UI 壳与空态占位（避免前端做双份内容渲染逻辑），后端会逐步补英文内容源与配对跳转。
+**实现现状**（与早期计划不同，此处描述的是代码实际行为）：
+
+- `/` 重定向到 `/en/`，默认语言只在 `astro.config.mjs` 一处定义。
+- `/zh` 与 `/en` 两棵路由树**渲染同一份中文内容**——没有任何按语言过滤的逻辑，
+  尽管 `src/content.config.ts` 的 library schema 已声明了 `lang` 字段。
+  差异仅限于 URL 前缀、`<html lang>` 与少量 UI 字符串。
+- `BaseLayout` 已输出 `canonical` 与 `hreflang`，因此重复内容对 SEO 无害；
+  但这不等于 `/en` 是真正的英文站。
+
+**待决策**：是按 `data.lang` 过滤（`/en` 只渲染英文条目、其余走空态），
+还是暂时下线 `/en`。在此之前，任何"英文内容"的假设都不成立。
 
 ## 5. 开发建议
 
-1.  **Mock Data**: 既然内容库尚未完全填充，请在 `.content/Team-Guidebook/通讯录/` 或 `.content/Team-Guidebook/图书馆/项目/` 下创建少量 `dummy-*.md` 进行 UI 调试（或在代码仓库提供 fixtures，二选一）。
+1.  **Mock Data**: 仓库已提供 fixtures，无需 vault 权限即可开发：`CONTENT_DIR=fixtures/Team-Guidebook npm run dev`。新增用例请加到 `fixtures/Team-Guidebook/` 下（CI 用的就是这一份）。
 2.  **样式框架**: 使用 Tailwind CSS v4。
 3.  **图标库**: 推荐使用 `lucide-react` 或 `lucide-astro`。
 

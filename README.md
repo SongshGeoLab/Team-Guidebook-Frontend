@@ -1,6 +1,8 @@
 # Team Guidebook Lab Site (Astro)
 
-Astro 5 + TypeScript + Tailwind static site for the lab. Content is Obsidian-driven with direct mapping from the `Team-Guidebook/` vault. Dual-language routes `/zh` (primary) and `/en` (shell/empty state) are already scaffolded.
+Astro + TypeScript + Tailwind static site for the lab. Content is Obsidian-driven with direct mapping from the `Team-Guidebook/` vault.
+
+Dual-language routes `/zh` and `/en` are scaffolded, and `/` redirects to **`/en/`** — the default locale is set in exactly one place, `astro.config.mjs`. Note that both trees currently render the same Chinese content; filtering by `data.lang` is not implemented yet.
 
 ## Content Sync Strategy
 
@@ -47,20 +49,33 @@ This project is configured for deployment on Vercel. The build process automatic
 
 Configure the following environment variables in Vercel dashboard:
 
-- **`CONTENT_REPO_URL`** (required): GitHub repository URL for the content repository
-  - Public repo: `https://github.com/username/Team-Guidebook.git`
-  - Private repo: `https://github.com/username/Team-Guidebook.git` (Vercel GitHub App handles auth automatically)
+- **`CONTENT_REPO_URL`** (required): HTTPS URL of the content repository, e.g.
+  `https://github.com/username/Team-Guidebook.git`. Use HTTPS, not SSH — the
+  setup script only injects credentials for `https://github.com/` URLs, so an
+  SSH URL works locally and fails silently on Vercel.
+- **`GITHUB_TOKEN`** (required for a *private* content repo): a token with read
+  access to it. Vercel's GitHub App only reaches the project's own repository,
+  so a separate token is needed — see `docs/VERCEL_DEPLOYMENT.md`. Prefer a
+  fine-grained, read-only token scoped to the content repo.
 - **`CONTENT_REPO_REF`** (optional): Branch or tag to clone from (default: `main`)
+- **`SITE_URL`** (optional): overrides the canonical/sitemap origin when a custom
+  domain is in front of the deployment.
 - **`PUBLIC_GISCUS_REPO`** (optional): GitHub repository for Giscus comments (e.g., `username/repo`)
 - **`PUBLIC_GISCUS_REPO_ID`** (optional): Giscus repository ID
 - **`PUBLIC_GISCUS_CATEGORY`** (optional): Giscus discussion category name
 - **`PUBLIC_GISCUS_CATEGORY_ID`** (optional): Giscus category ID
+- **`PUBLIC_GISCUS_THEME`** (optional): Giscus theme (default: `preferred_color_scheme`)
 
 ### Setup Steps
 
 1. Connect your repository to Vercel
 2. Configure environment variables in Vercel project settings
 3. Deploy - Vercel will automatically detect the Astro framework and use the configuration in `vercel.json`
+
+> `vercel.json` deliberately contains no `/` rewrite: the redirect to the default
+> locale lives in `astro.config.mjs` alone. Having both meant two files had to be
+> changed in lockstep, and Vercel's *rewrite* (as opposed to a redirect) served
+> identical crawlable HTML at both `/` and `/en/`.
 
 The build will automatically:
 - Clone the content repository specified in `CONTENT_REPO_URL`
