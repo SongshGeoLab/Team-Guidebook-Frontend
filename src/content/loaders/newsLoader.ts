@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
 import fg from 'fast-glob';
-import { marked } from 'marked';
+import { renderMarkdown } from '../../utils/render-markdown.js';
 
 // Define the shape of the news item
 // Must match the schema in config.ts (minus the Zod transformation, or pre-transformation)
@@ -152,9 +152,10 @@ export function newsLoader(): Loader {
               tags.push(tagMatch[1]);
             }
 
-            // Render Markdown to HTML
-            // We use marked
-            const html = await marked.parse(bulletContent);
+            // Render through the same plugin chain the rest of the site uses,
+            // then sanitise. `marked` bypassed both: no wiki links, no callouts,
+            // and no sanitiser in front of dangerouslySetInnerHTML.
+            const html = await renderMarkdown(bulletContent);
 
             // Create ID: Date-Index
             const id = `${path.basename(file, '.md')}-${bulletIndex++}`;
