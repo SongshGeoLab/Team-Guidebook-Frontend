@@ -1,11 +1,12 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { entrySlug } from '../../../utils/entrySlug';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects', ({ data }) => data.publish !== false);
   return projects.map((project) => ({
-    params: { slug: project.id },
+    params: { slug: entrySlug(project) },
     props: { project },
   }));
 }
@@ -15,7 +16,17 @@ const { Content } = await project.render();
 
 // Get all people for name lookup
 const allPeople = await getCollection('people', ({ data }) => data.publish !== false);
-const peopleMap = new Map(allPeople.map((p) => [p.id, { name: p.data.name, id: p.id }]));
+// Projects reference people by their frontmatter `id`, while the collection id
+// is the filename. Key the map by both (plus the slug) so a reference resolves
+// whichever form the author used.
+const peopleMap = new Map(
+  allPeople.flatMap((p) => {
+    const entry = { name: p.data.name, slug: entrySlug(p) };
+    return [p.data.id, p.id, entry.slug]
+      .filter(Boolean)
+      .map((key) => [key, entry] as const);
+  })
+);
 
 const startDate = project.data.start_date instanceof Date 
   ? project.data.start_date 
@@ -51,7 +62,7 @@ const endDate = project.data.end_date
                   return person ? (
                     <li>
                       <a 
-                        href={`/en/people/${person.id}`}
+                        href={`/en/people/${person.slug}`}
                         class="text-blue-600 hover:underline"
                       >
                         {person.name}

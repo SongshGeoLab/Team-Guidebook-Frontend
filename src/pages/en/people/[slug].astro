@@ -1,11 +1,12 @@
 ---
 import { getCollection, getEntry } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { entrySlug } from '../../../utils/entrySlug';
 
 export async function getStaticPaths() {
   const people = await getCollection('people', ({ data }) => data.publish !== false);
   return people.map((person) => ({
-    params: { slug: person.id },
+    params: { slug: entrySlug(person) },
     props: { person },
   }));
 }

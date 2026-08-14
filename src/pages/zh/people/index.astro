@@ -1,18 +1,19 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { entrySlug } from '../../../utils/entrySlug';
 import { PeoplePage } from '../../../components/react/pages/PeoplePage';
 
 const allPeople = await getCollection('people', ({ data }) => data.publish !== false);
 const people = allPeople.map((person) => ({
-  id: person.id,
+  id: entrySlug(person),
   name: person.data.name,
   role: person.data.role,
   avatar: person.data.avatar,
   email: person.data.email,
   interests: person.data.interests || [],
   links: person.data.links || [],
-  detailUrl: `/zh/people/${person.id}`
+  detailUrl: `/zh/people/${entrySlug(person)}`
 }));
 ---
 
