@@ -5,65 +5,13 @@ import tailwindcss from '@tailwindcss/vite';
 import wikiLink from 'remark-wiki-link';
 import remarkDirective from 'remark-directive';
 import remarkDirectiveRehype from 'remark-directive-rehype';
-import { visit } from 'unist-util-visit';
-import remarkObsidianImage from './src/utils/remark-obsidian-image.js';
+import remarkObsidianLinks, { buildContentIndex } from './src/utils/obsidian-links.js';
 import remarkObsidianCallouts from './src/utils/remark-obsidian-callouts.js';
 import rehypeCallouts from './src/utils/rehype-callouts.js';
 
-/**
- * Remark plugin to inject locale awareness into WikiLinks.
- * Assumes 'remark-wiki-link' has already run and created 'wikiLink' nodes.
- */
-const wikiLinkWithLocale = () => {
-  return (/** @type {import('mdast').Root} */ tree, /** @type {import('vfile').VFile} */ file) => {
-    // file parameter is optional and should not cause early exit
-    if (!tree) return tree;
-    
-    const filePath = file?.history?.[0] ?? '';
-    const fmLang = file?.data?.astro?.frontmatter?.lang;
-    const inferredFromPath = filePath.includes('/en/') ? 'en' : (filePath.includes('/zh/') ? 'zh' : undefined);
-    const lang = fmLang || inferredFromPath || 'zh';
-
-    const normalize = (/** @type {string} */ value) =>
-      value
-        .split('/')
-        .map((/** @type {string} */ segment) =>
-          segment
-            .trim()
-            .replace(/[\s_]+/g, '-')
-            .toLowerCase()
-        )
-        .join('/');
-
-    visit(tree, 'wikiLink', (/** @type {any} */ node) => {
-      const permalink = node.data?.permalink || node.value;
-      if (!permalink) return;
-
-      let href;
-      if (permalink.startsWith('/')) {
-        href = permalink;
-      } else {
-        const normalized = normalize(permalink);
-        if (normalized.startsWith('en/')) {
-          href = `/en/library/${normalized.slice(3)}`;
-        } else if (normalized.startsWith('zh/')) {
-          href = `/zh/library/${normalized.slice(3)}`;
-        } else {
-          href = `/${lang}/library/${normalized}`;
-        }
-      }
-
-      if (!node.data) node.data = {};
-      if (!node.data.hProperties) node.data.hProperties = {};
-      
-      node.data.hProperties.href = href;
-      node.data.hProperties.className = ['internal-link'];
-    });
-    
-    // Always return the tree to maintain the processing pipeline
-    return tree;
-  };
-};
+// Built once per process and shared by every markdown file, instead of
+// re-globbing the whole vault for each page.
+const contentIndex = buildContentIndex();
 
 // https://astro.build/config
 export default defineConfig({
@@ -88,10 +36,15 @@ export default defineConfig({
   markdown: {
     remarkPlugins: [
       remarkObsidianCallouts(), // Transform Obsidian callouts (> [!INFO]) to directives
-      remarkDirective, // Parse directives (:::info[...]:::) 
-      remarkObsidianImage(), // Transform ![[image.png]] to ![](/attachments/image.png)
-      [wikiLink, { aliasDivider: '|' }], // Parse [[WikiLinks]] syntax
-      /** @type {any} */ (wikiLinkWithLocale()) // Transform [[links]] hrefs
+      remarkDirective, // Parse directives (:::info[...]:::)
+      // NOTE: remark-wiki-link is a micromark *syntax* extension, so it runs at
+      // parse time — before every transformer below, whatever the array order.
+      // `pageResolver` is the identity here so the raw target survives to
+      // remarkObsidianLinks, which resolves it against the on-disk index.
+      // The old default lowercased the name and dropped its directory, which is
+      // why every wiki link 404'd.
+      [wikiLink, { aliasDivider: '|', pageResolver: (/** @type {string} */ name) => [name] }],
+      /** @type {any} */ (remarkObsidianLinks({ index: contentIndex }))
     ],
     rehypePlugins: [
       // IMPORTANT: remarkDirectiveRehype MUST be in rehypePlugins, not remarkPlugins.
