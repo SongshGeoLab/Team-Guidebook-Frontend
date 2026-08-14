@@ -6,6 +6,8 @@ import { GiscusComments } from './GiscusComments';
 
 interface NewsTimelineProps {
   items: NewsItem[];
+  /** Drives date formatting and UI strings; without it both were hardcoded English. */
+  lang: 'zh' | 'en';
   /**
    * Giscus configuration for comments
    * If not provided, comments will be disabled
@@ -20,7 +22,7 @@ interface NewsTimelineProps {
   };
 }
 
-export function NewsTimeline({ items, giscusConfig }: NewsTimelineProps) {
+export function NewsTimeline({ items, lang, giscusConfig }: NewsTimelineProps) {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
   const toggleComments = (itemId: string) => {
@@ -64,6 +66,21 @@ export function NewsTimeline({ items, giscusConfig }: NewsTimelineProps) {
                 className="text-sm text-gray-300 leading-relaxed [&_a.internal-link]:text-teal-400 [&_a.internal-link]:underline [&_a.internal-link]:underline-offset-2 [&_a.internal-link]:decoration-dashed"
                 dangerouslySetInnerHTML={{ __html: item.content }}
               />
+
+              {item.relatedPeople && item.relatedPeople.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-gray-400">
+                  <span>{lang === 'zh' ? '相关成员' : 'People'}:</span>
+                  {item.relatedPeople.map((person) => (
+                    <a
+                      key={person.url}
+                      href={person.url}
+                      className="text-teal-400 hover:underline underline-offset-2"
+                    >
+                      {person.name}
+                    </a>
+                  ))}
+                </div>
+              )}
 
               {item.tags && item.tags.length > 0 && (
                 <div className="flex gap-2 mt-3">

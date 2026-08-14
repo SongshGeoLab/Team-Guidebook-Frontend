@@ -140,7 +140,7 @@ export function HomePage({ lang, news, projects }: HomePageProps) {
           </a>
         </div>
         <div className="lg:col-span-8">
-          <NewsTimeline items={topNews} />
+          <NewsTimeline items={topNews} lang={lang} />
         </div>
       </section>
     </div>

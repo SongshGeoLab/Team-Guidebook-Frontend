@@ -3,8 +3,15 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { NewsPage } from '../../../components/react/pages/NewsPage';
 import { getGiscusConfig } from '../../../config/giscus';
+import { entrySlug } from '../../../utils/entrySlug';
 
 const allNews = await getCollection('news', ({ data }) => data.publish !== false);
+
+// related_people holds person ids. Resolve them to names + URLs here so the
+// timeline can actually render them; the field used to be threaded all the way
+// through to the component and then never displayed.
+const allPeople = await getCollection('people', ({ data }) => data.publish !== false);
+const peopleById = new Map(allPeople.map((p) => [entrySlug(p), { name: p.data.name, slug: entrySlug(p) }]));
 const news = allNews
   .sort((a, b) => {
     const dateA = a.data.date instanceof Date ? a.data.date : new Date(a.data.date);
@@ -17,7 +24,11 @@ const news = allNews
     date: (item.data.date instanceof Date ? item.data.date : new Date(item.data.date)).toISOString(),
     content: item.data.content || '',
     tags: item.data.tags || [],
-    related_people: item.data.related_people || []
+    related_people: item.data.related_people || [],
+    relatedPeople: (item.data.related_people || [])
+      .map((id: string) => peopleById.get(id))
+      .filter(Boolean)
+      .map((p: any) => ({ name: p.name, url: `/zh/people/${p.slug}` }))
   }));
 
 // Get Giscus configuration

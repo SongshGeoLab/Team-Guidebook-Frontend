@@ -2,6 +2,7 @@ import type { Loader, LoaderContext } from 'astro/loaders';
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
+import { entrySlug } from '../../utils/entrySlug';
 import fg from 'fast-glob';
 import { renderMarkdown } from '../../utils/render-markdown.js';
 
@@ -54,18 +55,15 @@ function loadPeopleMap(contentRoot: string): Record<string, string> {
     const content = fs.readFileSync(filePath, 'utf-8');
     const { data } = matter(content);
     
-    // ID is the filename without extension (slug)
-    const id = path.basename(file, '.md');
-    
-    // Map ID to itself
-    aliasMap[id] = id;
-    aliasMap[data.name] = id; // Map name to ID
-    
-    // Map aliases
-    if (Array.isArray(data.aliases)) {
-      for (const alias of data.aliases) {
-        aliasMap[alias] = id;
-      }
+    // The canonical id is the one declared in frontmatter — that is what the
+    // person route is built from. Deriving it from the filename produced
+    // "Boyu Wang", which matches no route.
+    const id = entrySlug({ id: file, data });
+
+    // Every spelling an author might use resolves to that one id.
+    const keys = [data.id, path.basename(file, '.md'), data.name, ...(Array.isArray(data.aliases) ? data.aliases : [])];
+    for (const key of keys) {
+      if (typeof key === 'string' && key.trim()) aliasMap[key.trim()] = id;
     }
   }
   return aliasMap;
@@ -136,11 +134,13 @@ export function newsLoader(): Loader {
               if (aliasMap[name]) {
                 relatedPeople.push(aliasMap[name]);
               } else {
-                // If no match, maybe keep the name or ignore?
-                // Plan says "parse #P/<Name> via People aliases mapping".
-                // If not found, maybe just don't add to related_people?
-                // Or add the raw name? Schema expects IDs.
-                // context.logger.warn(`Person not found for alias: ${name}`);
+                // Never fail silently here: this warning was commented out, and
+                // that is the only reason 100% of #P/ tags going unresolved went
+                // unnoticed. Content authors need to see their typo.
+                context.logger.warn(
+                  `[news] unresolved #P/${name} in ${path.basename(file)} — ` +
+                  `no entry in 通讯录/ has that id, name or alias`
+                );
               }
             }
 

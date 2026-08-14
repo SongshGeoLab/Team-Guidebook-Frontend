@@ -28,6 +28,8 @@ export interface NewsItem {
   content: string;
   tags?: string[];
   related_people?: string[];
+  /** Resolved from related_people by the page, so the timeline can link them. */
+  relatedPeople?: Array<{ name: string; url: string }>;
 }
 
 export interface Publication {
