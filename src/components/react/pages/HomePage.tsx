@@ -11,9 +11,16 @@ interface HomePageProps {
 }
 
 const TEXT = {
-  title: {
-    zh: '进化的人与水系统',
-    en: 'Evolutionary Human-Water System'
+  // The hero renders the title over two lines, the second one in the gradient
+  // accent. Keep the halves here rather than inlining one of them in the JSX —
+  // that is how the two ended up duplicating each other.
+  titleLead: {
+    zh: '进化的',
+    en: 'Evolutionary'
+  },
+  titleAccent: {
+    zh: '人与水系统',
+    en: 'Human-Water System'
   },
   heroLead: {
     zh: '通过水的视角探索人类社会与自然环境的共演',
@@ -47,10 +54,10 @@ export function HomePage({ lang, news, projects }: HomePageProps) {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-light tracking-tight text-white leading-[1.1] drop-shadow-lg">
-            {lang === 'zh' ? '进化的人-水系统' : 'Evolutionary'}
+            {TEXT.titleLead[lang]}
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-200 to-blue-400 font-normal">
-              {TEXT.title[lang]}
+              {TEXT.titleAccent[lang]}
             </span>
           </h1>
 
