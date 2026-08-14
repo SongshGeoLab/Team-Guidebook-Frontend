@@ -186,7 +186,9 @@ function parseBibEntry(entry: any, bibKey: string, originalBibtex?: string): Pub
       pdf: pdf || undefined,
       tags,
       publish: true, // Default to published unless specified otherwise
-      date: year ? new Date(year, 0, 1) : undefined, // Use year as date
+      // Date.UTC, not new Date(y, 0, 1): the latter is *local* midnight, so
+      // in UTC+8 a 2024 paper serialised via toISOString() as 2023-12-31.
+      date: year ? new Date(Date.UTC(year, 0, 1)) : undefined,
     };
   } catch (error) {
     console.error(`Error parsing BibTeX entry ${bibKey}:`, error);

@@ -69,7 +69,7 @@ export function NewsPage({ lang, news, giscusConfig }: NewsPageProps) {
       {view === 'timeline' ? (
         <NewsTimeline items={news} lang={lang} giscusConfig={finalGiscusConfig} />
       ) : (
-        <NewsCalendar items={news} />
+        <NewsCalendar items={news} lang={lang} />
       )}
     </div>
   );

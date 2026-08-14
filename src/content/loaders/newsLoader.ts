@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { entrySlug } from '../../utils/entrySlug';
+import { parseCalendarDate } from '../../utils/formatDate';
 import fg from 'fast-glob';
 import { renderMarkdown } from '../../utils/render-markdown.js';
 
@@ -100,7 +101,10 @@ export function newsLoader(): Loader {
           const basename = path.basename(file, '.md');
           // Try to parse YYYY-MM-DD
           if (/^\d{4}-\d{2}-\d{2}$/.test(basename)) {
-            date = new Date(basename);
+            // Explicit UTC: `new Date('2025-12-17')` is already UTC midnight,
+            // but say so, because publicationsLoader used local midnight and
+            // the two conventions disagreed across a day boundary.
+            date = parseCalendarDate(basename);
           } else {
              // If not YYYY-MM-DD, skip or use mtime? 
              // Plan implies Daily Notes are YYYY-MM-DD

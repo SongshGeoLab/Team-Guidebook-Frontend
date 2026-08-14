@@ -1,14 +1,18 @@
 import type { NewsItem } from '../types';
 import { CalendarDays } from 'lucide-react';
 import { GlassCard } from './GlassCard';
+import { formatDay, formatMonth } from '../../../utils/formatDate';
 
 interface NewsCalendarProps {
   items: NewsItem[];
+  /** Without this the month headings were hardcoded en-US and the day
+   *  labels used the visitor's own locale — three formats on one screen. */
+  lang: 'zh' | 'en';
 }
 
-export function NewsCalendar({ items }: NewsCalendarProps) {
+export function NewsCalendar({ items, lang }: NewsCalendarProps) {
   const byMonth = items.reduce<Record<string, NewsItem[]>>((acc, item) => {
-    const month = new Date(item.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    const month = formatMonth(item.date, lang);
     acc[month] = acc[month] || [];
     acc[month].push(item);
     return acc;
@@ -26,7 +30,7 @@ export function NewsCalendar({ items }: NewsCalendarProps) {
             {list.map((item) => (
               <li key={item.id} className="text-white/90">
                 <div className="text-sm text-gray-400">
-                  {new Date(item.date).toLocaleDateString()}
+                  {formatDay(item.date, lang)}
                 </div>
                 <div className="font-medium">{item.title}</div>
               </li>

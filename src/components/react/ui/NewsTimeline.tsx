@@ -3,6 +3,7 @@ import { Calendar, MessageSquare } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { useState } from 'react';
 import { GiscusComments } from './GiscusComments';
+import { formatDay } from '../../../utils/formatDate';
 
 interface NewsTimelineProps {
   items: NewsItem[];
@@ -58,7 +59,7 @@ export function NewsTimeline({ items, lang, giscusConfig }: NewsTimelineProps) {
                 </h3>
                 <div className="flex items-center text-xs text-gray-400 font-mono gap-1.5">
                   <Calendar className="w-3 h-3" />
-                  {new Date(item.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  {formatDay(item.date, lang)}
                 </div>
               </div>
 
