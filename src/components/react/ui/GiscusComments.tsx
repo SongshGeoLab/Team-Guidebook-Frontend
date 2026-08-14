@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react';
 
+/** Map our two-letter locales onto the ones Giscus actually accepts. */
+const GISCUS_LOCALES: Record<string, string> = {
+  zh: 'zh-CN',
+  en: 'en'
+};
+
 interface GiscusCommentsProps {
   /**
    * GitHub repository in format: owner/repo
@@ -27,7 +33,7 @@ interface GiscusCommentsProps {
    * Options: "pathname" | "url" | "title" | "og:title"
    * Default: "pathname"
    */
-  mapping?: 'pathname' | 'url' | 'title' | 'og:title';
+  mapping?: 'pathname' | 'url' | 'title' | 'og:title' | 'specific' | 'number';
   /**
    * Term used for discussion mapping
    * Default: "pathname"
@@ -112,7 +118,9 @@ export function GiscusComments({
     script.setAttribute('data-emit-metadata', emitMetadata ? '1' : '0');
     script.setAttribute('data-input-position', inputPosition);
     script.setAttribute('data-theme', theme);
-    script.setAttribute('data-lang', lang);
+    // Giscus's locale list uses zh-CN / zh-TW; a bare 'zh' is not valid and
+    // silently falls back to the English UI.
+    script.setAttribute('data-lang', GISCUS_LOCALES[lang] ?? lang);
     script.setAttribute('data-loading', loading);
 
     script.crossOrigin = 'anonymous';

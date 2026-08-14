@@ -114,7 +114,14 @@ export function NewsTimeline({ items, lang, giscusConfig }: NewsTimelineProps) {
                         categoryId={giscusConfig.categoryId}
                         lang={giscusConfig.lang || 'en'}
                         theme={giscusConfig.theme || 'preferred_color_scheme'}
-                        mapping="pathname"
+                        // `pathname` ignores data-term, so every item on
+                        // /zh/news/ shared one discussion keyed on the page
+                        // path — comments on item A showed up under item B —
+                        // and /zh/news/ vs /en/news/ split the same item in
+                        // two. `specific` makes the per-item term take effect.
+                        mapping="specific"
+                        // Deliberately no locale prefix: the same news item
+                        // must map to the same discussion in both languages.
                         term={`news-${item.id}`}
                         identifier={`news-${item.id}`}
                       />
