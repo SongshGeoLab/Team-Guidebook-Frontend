@@ -18,6 +18,6 @@ const people = allPeople.map((person) => ({
 ---
 
 <BaseLayout title="团队成员" description="实验室成员列表" lang="zh">
-  <PeoplePage client:load lang="zh" people={people} />
+  <PeoplePage client:visible lang="zh" people={people} />
 </BaseLayout>
 

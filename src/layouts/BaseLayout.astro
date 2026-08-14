@@ -68,7 +68,12 @@ const alternates = Astro.site
     Only the x axis is clipped here.
   -->
   <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white min-h-screen flex flex-col overflow-x-hidden">
-    <RippleBackground client:load />
+    <!--
+      Decorative only, and the heaviest bundle in the tree (three + fiber + drei).
+      client:load blocked on it during initial hydration on all 29 pages; it has
+      nothing to do with interactivity, so let it wait for an idle moment.
+    -->
+    <RippleBackground client:idle />
     <div class="relative z-10 flex flex-col min-h-screen">
       <Header />
       <main class="flex-grow container mx-auto px-4 py-8">

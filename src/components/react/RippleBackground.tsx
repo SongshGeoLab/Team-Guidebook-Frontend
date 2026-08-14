@@ -99,7 +99,21 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
   const prevFBO = useRef(fboB);
   const mouse = useRef({ x: -100, y: -100 });
 
+  // Respect prefers-reduced-motion. Both the pointer ripple AND the idle shader
+  // drift are motion; skipping only the listener would still animate the page.
+  const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
+    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    if (!query) return;
+    setReduceMotion(query.matches);
+    const onChange = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       const x = e.clientX / window.innerWidth;
       const y = 1 - e.clientY / window.innerHeight;
@@ -107,7 +121,7 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+  }, [reduceMotion]);
 
   const [simScene] = useState(() => new Scene());
   const [simCam] = useState(() => new OrthographicCamera(-1, 1, 1, -1, 0, 1));
@@ -133,6 +147,10 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
   );
 
   useFrame((state) => {
+    // One static frame is still drawn (the background image must appear); it is
+    // the per-frame updates that are suppressed.
+    if (reduceMotion) return;
+
     simUniforms.uMouse.value = [mouse.current.x, mouse.current.y];
     simUniforms.uTexture.value = prevFBO.current.texture;
 
