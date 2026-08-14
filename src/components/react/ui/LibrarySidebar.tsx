@@ -118,49 +118,44 @@ function TreeNodeComponent({
   );
 }
 
-export function LibrarySidebar({ tree, currentSlug, lang, basePath = '' }: LibrarySidebarProps) {
-  // Auto-expand paths to current node
-  const getInitialExpandedPaths = (): Set<string> => {
-    const paths = new Set<string>();
-    
-    // Find all parent paths of current slug by traversing the tree
-    function findPath(node: TreeNode, targetSlug: string): boolean {
-      // Check if current node's slug matches or is a parent of target
-      if (node.slug && (targetSlug === node.slug || targetSlug.startsWith(node.slug + '/'))) {
-        // Add this node's slug if it's not empty (root)
-        if (node.slug) {
-          paths.add(node.slug);
+/**
+ * Slugs of every ancestor of `targetSlug`, so the sidebar can auto-expand down
+ * to the current page. Module-level: this exact 30-line traversal used to be
+ * copy-pasted twice inside the component, once for the initial state and once
+ * in the effect that reacts to navigation.
+ */
+function collectAncestorPaths(tree: TreeNode, targetSlug: string): Set<string> {
+  const paths = new Set<string>();
+
+  const walk = (node: TreeNode): boolean => {
+    if (node.slug && (targetSlug === node.slug || targetSlug.startsWith(node.slug + '/'))) {
+      paths.add(node.slug);
+      for (const child of node.children) {
+        if (targetSlug === child.slug || targetSlug.startsWith(child.slug + '/')) {
+          walk(child);
+          break;
         }
-        
-        // Continue searching in children
-        for (const child of node.children) {
-          if (targetSlug.startsWith(child.slug + '/') || targetSlug === child.slug) {
-            findPath(child, targetSlug);
-            break;
-          }
-        }
+      }
+      return true;
+    }
+
+    for (const child of node.children) {
+      if (walk(child)) {
+        if (node.slug) paths.add(node.slug);
         return true;
       }
-      
-      // Search in children
-      for (const child of node.children) {
-        if (findPath(child, targetSlug)) {
-          // If found in a child, add this node's slug (it's a parent)
-          if (node.slug) {
-            paths.add(node.slug);
-          }
-          return true;
-        }
-      }
-      
-      return false;
     }
-    
-    findPath(tree, currentSlug);
-    return paths;
+    return false;
   };
 
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(getInitialExpandedPaths);
+  walk(tree);
+  return paths;
+}
+
+export function LibrarySidebar({ tree, currentSlug, lang, basePath = '' }: LibrarySidebarProps) {
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() =>
+    collectAncestorPaths(tree, currentSlug)
+  );
 
   const handleToggle = (slug: string) => {
     setExpandedPaths((prev) => {
@@ -174,45 +169,9 @@ export function LibrarySidebar({ tree, currentSlug, lang, basePath = '' }: Libra
     });
   };
 
-  // Update expanded paths when currentSlug changes
+  // Re-expand when navigation changes the current page.
   useEffect(() => {
-    const paths = new Set<string>();
-    
-    // Find all parent paths of current slug by traversing the tree
-    function findPath(node: TreeNode, targetSlug: string): boolean {
-      // Check if current node's slug matches or is a parent of target
-      if (node.slug && (targetSlug === node.slug || targetSlug.startsWith(node.slug + '/'))) {
-        // Add this node's slug if it's not empty (root)
-        if (node.slug) {
-          paths.add(node.slug);
-        }
-        
-        // Continue searching in children
-        for (const child of node.children) {
-          if (targetSlug.startsWith(child.slug + '/') || targetSlug === child.slug) {
-            findPath(child, targetSlug);
-            break;
-          }
-        }
-        return true;
-      }
-      
-      // Search in children
-      for (const child of node.children) {
-        if (findPath(child, targetSlug)) {
-          // If found in a child, add this node's slug (it's a parent)
-          if (node.slug) {
-            paths.add(node.slug);
-          }
-          return true;
-        }
-      }
-      
-      return false;
-    }
-    
-    findPath(tree, currentSlug);
-    setExpandedPaths(paths);
+    setExpandedPaths(collectAncestorPaths(tree, currentSlug));
   }, [currentSlug, tree]);
 
   if (!tree.children.length) {

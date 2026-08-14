@@ -32,7 +32,16 @@ const nav = [
       </a>
     </div>
 
-    <nav class="flex items-center gap-6 text-sm font-medium">
+    <!--
+      Horizontally scrollable rather than wrapping: seven items at every
+      breakpoint used to overflow the viewport on a phone with no way to reach
+      the ones past the edge.
+    -->
+    <nav
+      class="flex items-center gap-6 text-sm font-medium overflow-x-auto whitespace-nowrap
+             [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      aria-label={currentLang === 'en' ? 'Main navigation' : '主导航'}
+    >
       {nav.map((item) => (
         <a
           href={item.href}
@@ -45,7 +54,7 @@ const nav = [
 
     <div class="flex items-center gap-3 text-sm">
       <a
-        href={`/${currentLang}/search`}
+        href={`/${currentLang}/search/`}
         class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         aria-label={currentLang === 'en' ? 'Search' : '搜索'}
         title={currentLang === 'en' ? 'Search' : '搜索'}

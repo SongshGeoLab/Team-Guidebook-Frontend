@@ -57,7 +57,7 @@ export function PeoplePage({ lang, people }: PeoplePageProps) {
             {grouped[role].map((person, idx) => (
               <motion.a
                 key={person.id}
-                href={`/${lang}/people/${person.id}`}
+                href={person.detailUrl || `/${lang}/people/${person.id}`}
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
