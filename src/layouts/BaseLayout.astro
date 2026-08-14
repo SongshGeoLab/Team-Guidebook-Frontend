@@ -23,7 +23,13 @@ const { title, description = "Lab Website", lang = "zh" } = Astro.props;
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
   </head>
-  <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white min-h-screen flex flex-col overflow-hidden">
+  <!--
+    NOTE: never put a bare `overflow-hidden` on <body>. When <html> has
+    `overflow: visible`, the body's overflow propagates to the viewport
+    (CSS Overflow 3 §3.3), which silently disables scrolling on every page.
+    Only the x axis is clipped here.
+  -->
+  <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white min-h-screen flex flex-col overflow-x-hidden">
     <RippleBackground client:load />
     <div class="relative z-10 flex flex-col min-h-screen">
       <Header />
