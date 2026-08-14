@@ -57,24 +57,45 @@ export default function rehypeCallouts() {
       // After remark-directive-rehype, directives become HTML elements with tagName
       // set to the directive name (e.g., 'info', 'warning', 'note') instead of 'div'
       if (node.type === 'element' && node.tagName) {
-        const calloutType = (node.tagName || '').toLowerCase();
-        
-        // Check if this is a callout directive by matching tagName against known callout types
+        // Two ways in, and matching only the first one is why Obsidian callout
+        // titles never rendered:
+        //  - a hand-written `:::info` directive arrives with tagName 'info';
+        //  - remark-obsidian-callouts already emits <aside data-callout="info">,
+        //    so its tagName is 'aside' and never matched the type table.
+        const fromTagName = (node.tagName || '').toLowerCase();
+        const fromData = String(
+          node.properties?.dataCallout ?? node.properties?.['data-callout'] ?? ''
+        ).toLowerCase();
+        const calloutType = CALLOUT_TYPES[fromData] ? fromData : fromTagName;
+
         if (CALLOUT_TYPES[calloutType] || CALLOUT_TYPES[calloutType.toUpperCase()]) {
           const normalizedType = CALLOUT_TYPES[calloutType] || CALLOUT_TYPES[calloutType.toUpperCase()] || 'note';
-          
+
+          // Already processed (idempotent guard: the aside path can be revisited)
+          if (node.children?.[0]?.properties?.class === 'admonition-title') return;
+
           // Extract title from data-title attribute or from first child if it's a text node
           let title = node.properties?.dataTitle || node.properties?.['data-title'] || '';
-          
-          // If no title in properties, try to extract from first child paragraph
-          if (!title && node.children && node.children.length > 0) {
+
+          // Fallback only for the hand-written `:::info` form. When the node
+          // came from remark-obsidian-callouts it carries data-callout, and an
+          // absent data-title means the author genuinely wrote no title —
+          // promoting the body's first line would steal content.
+          const isObsidianCallout = Boolean(fromData);
+
+          // Remove ONLY the text node used as the title. Slicing off the whole
+          // <p> silently deleted the rest of the line, e.g. the bold run and
+          // trailing words in `:::info` + `Hello **world** and more`.
+          if (!title && !isObsidianCallout && node.children && node.children.length > 0) {
             const firstChild = node.children[0];
             if (firstChild.type === 'element' && firstChild.tagName === 'p' && firstChild.children) {
               const firstText = firstChild.children.find(child => child.type === 'text');
-              if (firstText && firstText.value) {
+              if (firstText && firstText.value.trim()) {
                 title = firstText.value.trim();
-                // Remove title paragraph from children if we extracted it
-                node.children = node.children.slice(1);
+                firstChild.children = firstChild.children.filter(child => child !== firstText);
+                if (firstChild.children.length === 0) {
+                  node.children = node.children.slice(1);
+                }
               }
             }
           }

@@ -50,10 +50,11 @@ export default defineConfig({
       /** @type {any} */ (remarkObsidianLinks({ index: contentIndex }))
     ],
     rehypePlugins: [
-      // IMPORTANT: remarkDirectiveRehype MUST be in rehypePlugins, not remarkPlugins.
-      // This bridge plugin operates on HAST (HTML AST), not MDAST (Markdown AST).
-      // Placing it in remarkPlugins would cause it to receive incompatible node types
-      // and fail to convert remark directives to HTML nodes, breaking the callout pipeline.
+      // Keep this in rehypePlugins. Moving it to remarkPlugins does make the
+      // hand-written `:::info` form render, but it overwrites the data.hName /
+      // hProperties that remark-obsidian-callouts already set, so data-callout
+      // and data-title are lost and every Obsidian callout promotes its body
+      // text to the title. Verified by trying it.
       /** @type {any} */ (remarkDirectiveRehype), // Convert remark directives to rehype nodes (bridge plugin)
       rehypeCallouts // Transform callout directives to styled HTML
     ]
