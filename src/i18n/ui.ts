@@ -42,11 +42,18 @@ export const ui = {
   },
   news: {
     title: { zh: '动态', en: 'News' } satisfies Dict,
-    description: { zh: '实验室动态与新闻', en: 'Lab news and updates' } satisfies Dict
+    description: { zh: '实验室动态与新闻', en: 'Lab news and updates' } satisfies Dict,
+    timeline: { zh: '时间线', en: 'Timeline' } satisfies Dict,
+    calendar: { zh: '日历', en: 'Calendar' } satisfies Dict,
+    showComments: { zh: '显示评论', en: 'Show Comments' } satisfies Dict,
+    hideComments: { zh: '收起评论', en: 'Hide Comments' } satisfies Dict,
+    relatedPeople: { zh: '相关成员', en: 'People' } satisfies Dict
   },
   library: {
     title: { zh: '图书馆', en: 'Library' } satisfies Dict,
-    description: { zh: '实验室知识库', en: 'Lab knowledge base' } satisfies Dict
+    description: { zh: '实验室知识库', en: 'Lab knowledge base' } satisfies Dict,
+    expand: { zh: '展开', en: 'Expand' } satisfies Dict,
+    collapse: { zh: '收起', en: 'Collapse' } satisfies Dict
   },
   about: {
     title: { zh: '关于实验室', en: 'About' } satisfies Dict,
@@ -64,6 +71,10 @@ export const ui = {
   search: {
     title: { zh: '搜索', en: 'Search' } satisfies Dict,
     description: { zh: '站内搜索', en: 'Search this site' } satisfies Dict
+  },
+  citation: {
+    copied: { zh: 'BibTeX 已复制到剪贴板', en: 'BibTeX copied to clipboard' } satisfies Dict,
+    copyFailed: { zh: 'BibTeX 复制失败', en: 'Failed to copy BibTeX' } satisfies Dict
   },
   project: {
     present: { zh: '至今', en: 'Present' } satisfies Dict,

@@ -1,19 +1,22 @@
 import type { Publication } from '../types';
 import { Copy, Download, BookOpen } from 'lucide-react';
 import { GlassCard } from './GlassCard';
+import { ui } from '../../../i18n/ui';
+import type { Lang } from '../../../i18n/ui';
 
 interface CitationItemProps {
   publication: Publication;
+  lang: Lang;
 }
 
-export function CitationItem({ publication }: CitationItemProps) {
+export function CitationItem({ publication, lang }: CitationItemProps) {
   const copyBibtex = async () => {
     if (!publication.bibtex) return;
     try {
       await navigator.clipboard.writeText(publication.bibtex);
-      alert('BibTeX copied to clipboard');
+      alert(ui.citation.copied[lang]);
     } catch {
-      alert('Failed to copy BibTeX');
+      alert(ui.citation.copyFailed[lang]);
     }
   };
 

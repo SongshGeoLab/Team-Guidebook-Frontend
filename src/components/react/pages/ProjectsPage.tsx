@@ -2,6 +2,7 @@ import type { Person, Project } from '../types';
 import { motion } from 'motion/react';
 // lucide-react v1 dropped brand icons; GitBranch is the nearest semantic fit.
 import { ArrowRight, Calendar, GitBranch } from 'lucide-react';
+import { ui } from '../../../i18n/ui';
 
 interface ProjectsPageProps {
   lang: 'zh' | 'en';
@@ -62,7 +63,7 @@ export function ProjectsPage({ lang, projects, people = [] }: ProjectsPageProps)
               <div className="text-sm text-gray-400 flex gap-4">
                 <span>
                   {project.start_date}
-                  {project.end_date ? ` - ${project.end_date}` : ' - Present'}
+                  {project.end_date ? ` - ${project.end_date}` : ` - ${ui.project.present[lang]}`}
                 </span>
                 {project.repo && (
                   <a

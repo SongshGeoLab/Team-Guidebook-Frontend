@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { NewsTimeline } from '../ui/NewsTimeline';
 import { NewsCalendar } from '../ui/NewsCalendar';
 import { Calendar as CalendarIcon, List } from 'lucide-react';
+import { ui } from '../../../i18n/ui';
 
 interface NewsPageProps {
   lang: 'zh' | 'en';
@@ -52,7 +53,7 @@ export function NewsPage({ lang, news, giscusConfig }: NewsPageProps) {
             }`}
           >
             <List className="w-4 h-4" />
-            Timeline
+            {ui.news.timeline[lang]}
           </button>
           <button
             onClick={() => setView('calendar')}
@@ -61,7 +62,7 @@ export function NewsPage({ lang, news, giscusConfig }: NewsPageProps) {
             }`}
           >
             <CalendarIcon className="w-4 h-4" />
-            Calendar
+            {ui.news.calendar[lang]}
           </button>
         </div>
       </div>

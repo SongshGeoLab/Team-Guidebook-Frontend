@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ui } from '../../../i18n/ui';
 import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen } from 'lucide-react';
 import type { TreeNode } from '../../../utils/libraryTree';
 import clsx from 'clsx';
@@ -60,7 +61,7 @@ function TreeNodeComponent({
           <button
             onClick={handleToggle}
             className="flex items-center justify-center w-4 h-4 hover:bg-white/10 rounded transition-colors"
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            aria-label={isExpanded ? ui.library.collapse[lang] : ui.library.expand[lang]}
           >
             {isExpanded ? (
               <ChevronDown className="w-3 h-3 text-gray-400" />

@@ -4,6 +4,7 @@ import { GlassCard } from './GlassCard';
 import { useState } from 'react';
 import { GiscusComments } from './GiscusComments';
 import { formatDay } from '../../../utils/formatDate';
+import { ui } from '../../../i18n/ui';
 
 interface NewsTimelineProps {
   items: NewsItem[];
@@ -70,7 +71,7 @@ export function NewsTimeline({ items, lang, giscusConfig }: NewsTimelineProps) {
 
               {item.relatedPeople && item.relatedPeople.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-gray-400">
-                  <span>{lang === 'zh' ? '相关成员' : 'People'}:</span>
+                  <span>{ui.news.relatedPeople[lang]}:</span>
                   {item.relatedPeople.map((person) => (
                     <a
                       key={person.url}
@@ -103,7 +104,7 @@ export function NewsTimeline({ items, lang, giscusConfig }: NewsTimelineProps) {
                     className="mt-4 flex items-center gap-2 text-xs text-teal-400 hover:text-teal-300 transition-colors"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
-                    <span>{isCommentsExpanded ? 'Hide Comments' : 'Show Comments'}</span>
+                    <span>{isCommentsExpanded ? ui.news.hideComments[lang] : ui.news.showComments[lang]}</span>
                   </button>
 
                   {showComments && (

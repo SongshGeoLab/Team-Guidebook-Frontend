@@ -1,5 +1,6 @@
 import type { NewsItem, Project } from '../types';
 import { GlassCard } from '../ui/GlassCard';
+import { ui } from '../../../i18n/ui';
 import { NewsTimeline } from '../ui/NewsTimeline';
 import { ArrowRight, Waves } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -117,7 +118,7 @@ export function HomePage({ lang, news, projects }: HomePageProps) {
                 <p className="text-sm text-gray-400 mb-4 flex-1">{project.summary}</p>
               )}
               <div className="text-xs text-gray-500 font-mono">
-                {project.start_date} {project.end_date ? `- ${project.end_date}` : '- Present'}
+                {project.start_date} {project.end_date ? `- ${project.end_date}` : `- ${ui.project.present[lang]}`}
               </div>
             </GlassCard>
           ))}

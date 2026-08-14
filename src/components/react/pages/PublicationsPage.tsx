@@ -93,7 +93,7 @@ export function PublicationsPage({ lang, publications }: PublicationsPageProps) 
                 </h2>
                 <div className="space-y-4">
                   {undated.map((pub) => (
-                    <CitationItem key={pub.id} publication={pub} />
+                    <CitationItem key={pub.id} publication={pub} lang={lang} />
                   ))}
                 </div>
               </div>
@@ -108,7 +108,7 @@ export function PublicationsPage({ lang, publications }: PublicationsPageProps) 
                 <h2 className="text-2xl font-light text-white/70 border-b border-white/5 pb-2">{year}</h2>
                 <div className="space-y-4">
                   {yearPubs.map((pub) => (
-                    <CitationItem key={pub.id} publication={pub} />
+                    <CitationItem key={pub.id} publication={pub} lang={lang} />
                   ))}
                 </div>
               </div>

@@ -8,6 +8,7 @@ import remarkDirective from 'remark-directive';
 import remarkDirectiveRehype from 'remark-directive-rehype';
 import remarkObsidianLinks, { buildContentIndex } from './src/utils/obsidian-links.js';
 import remarkObsidianCallouts from './src/utils/remark-obsidian-callouts.js';
+import remarkReviveDirectives from './src/utils/remark-revive-directives.js';
 import rehypeCallouts from './src/utils/rehype-callouts.js';
 
 // Built once per process and shared by every markdown file, instead of
@@ -47,6 +48,9 @@ export default defineConfig({
       // remarkObsidianLinks, which resolves it against the on-disk index.
       // The old default lowercased the name and dropped its directory, which is
       // why every wiki link 404'd.
+      // Must sit after remarkDirective: it undoes the text/leaf directives that
+      // plugin claims from ordinary prose, e.g. the `:15` in a `19:15` timestamp.
+      /** @type {any} */ (remarkReviveDirectives()),
       [wikiLink, { aliasDivider: '|', pageResolver: (/** @type {string} */ name) => [name] }],
       /** @type {any} */ (remarkObsidianLinks({ index: contentIndex }))
     ],

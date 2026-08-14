@@ -26,6 +26,7 @@ import wikiLink from 'remark-wiki-link';
 
 import remarkObsidianCallouts from './remark-obsidian-callouts.js';
 import remarkObsidianLinks, { buildContentIndex } from './obsidian-links.js';
+import remarkReviveDirectives from './remark-revive-directives.js';
 
 /**
  * Allow through exactly the markup our own plugins emit, and nothing else.
@@ -90,6 +91,7 @@ function createProcessor(options = {}) {
     .use(remarkParse)
     .use(remarkObsidianCallouts())
     .use(remarkDirective)
+    .use(remarkReviveDirectives())
     .use(wikiLink, { aliasDivider: '|', pageResolver: (/** @type {string} */ n) => [n] })
     .use(remarkObsidianLinks({ index }))
     .use(remarkRehype)
