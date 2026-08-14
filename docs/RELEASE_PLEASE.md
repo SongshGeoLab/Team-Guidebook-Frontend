@@ -154,14 +154,6 @@ git commit -m "fix: resolve login redirect issue"
    - 选择 "Release Please" 工作流
    - 点击 "Run workflow"
 
-### 跳过自动发布
-
-如果某个提交不应该触发版本更新，可以在提交信息中添加 `[skip release]`:
-
-```bash
-git commit -m "docs: update README [skip release]"
-```
-
 ### 手动创建 Release
 
 如果需要手动创建 release（不推荐，除非特殊情况）：

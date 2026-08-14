@@ -1,13 +1,8 @@
 # Changelog
 
-## [Unreleased]
+All notable changes to this project are documented here.
 
-### Added
-- Initial project setup with Astro 5 + TypeScript + Tailwind CSS
-- Content Collections integration with Obsidian vault
-- Multi-language support (Chinese/English)
-- React Islands architecture for interactive components
-- Pagefind search integration
-- Giscus comments system
-- Release Please automation for version management
-
+This file is maintained by [Release Please](https://github.com/googleapis/release-please)
+and is generated from [Conventional Commits](https://www.conventionalcommits.org/).
+Do not add entries by hand — release-please prepends its own sections and will
+never update a hand-written one, so it just goes stale above every real release.

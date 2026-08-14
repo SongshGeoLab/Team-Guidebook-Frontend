@@ -5,6 +5,15 @@ on:
     branches:
       - main
       - master
+  # README and docs/RELEASE_PLEASE.md both tell you to run
+  # `gh workflow run release-please.yml`. Without this trigger that command
+  # fails with "Workflow does not have 'workflow_dispatch' trigger".
+  workflow_dispatch:
+
+# Two quick pushes to main would otherwise race to open the release PR.
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -22,6 +31,11 @@ jobs:
         with:
           # Configuration file path
           config-file: .release-please-config.json
+          # Without an explicit manifest the action falls back to a default
+          # path that did not exist, leaving it with no anchor for the current
+          # version — the first run would then have jumped to 1.0.0 rather than
+          # bumping 0.0.1.
+          manifest-file: .release-please-manifest.json
           # GitHub token (automatically provided by GitHub Actions)
           token: ${{ secrets.GITHUB_TOKEN }}
 
