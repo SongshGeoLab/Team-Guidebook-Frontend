@@ -1,0 +1,47 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { HomePage } from '../../components/react/pages/HomePage';
+import { entrySlug } from '../../utils/entrySlug';
+import { LOCALES, ui, type Lang } from '../../i18n/ui';
+
+export function getStaticPaths() {
+  return LOCALES.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+
+const allNews = await getCollection('news', ({ data }) => data.publish !== false);
+const newsItems = allNews
+  .sort((a, b) => {
+    const dateA = a.data.date instanceof Date ? a.data.date : new Date(a.data.date);
+    const dateB = b.data.date instanceof Date ? b.data.date : new Date(b.data.date);
+    return dateB.getTime() - dateA.getTime();
+  })
+  .slice(0, 5)
+  .map((item) => ({
+    id: item.id,
+    title: item.data.title || item.id,
+    date: (item.data.date instanceof Date ? item.data.date : new Date(item.data.date)).toISOString(),
+    content: item.data.content || '',
+    tags: item.data.tags || []
+  }));
+
+const allProjects = await getCollection('projects', ({ data }) => data.publish !== false);
+const featuredProjects = allProjects.slice(0, 3).map((project) => ({
+  id: entrySlug(project),
+  title: project.data.title,
+  tags: project.data.tags || [],
+  start_date: project.data.start_date
+    ? new Date(project.data.start_date).getFullYear().toString()
+    : undefined,
+  end_date: project.data.end_date
+    ? new Date(project.data.end_date).getFullYear().toString()
+    : undefined,
+  detailUrl: `/${lang}/projects/${entrySlug(project)}`
+}));
+---
+
+<BaseLayout title={ui.home.title[lang]} description={ui.home.description[lang]} lang={lang}>
+  <HomePage client:load lang={lang} news={newsItems} projects={featuredProjects} />
+</BaseLayout>

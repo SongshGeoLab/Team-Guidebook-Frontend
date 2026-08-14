@@ -3,6 +3,13 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { entrySlug } from '../../../utils/entrySlug';
 import { ProjectsPage } from '../../../components/react/pages/ProjectsPage';
+import { LOCALES, ui, type Lang } from '../../../i18n/ui';
+
+export function getStaticPaths() {
+  return LOCALES.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
 
 const allProjects = await getCollection('projects', ({ data }) => data.publish !== false);
 const allPeople = await getCollection('people', ({ data }) => data.publish !== false);
@@ -28,12 +35,11 @@ const projects = allProjects
     people: project.data.people || [],
     tags: project.data.tags || [],
     repo: project.data.repo,
-    detailUrl: `/en/projects/${entrySlug(project)}`
+    detailUrl: `/${lang}/projects/${entrySlug(project)}`
   }));
 ---
 
-<BaseLayout title="Projects" description="Lab projects" lang="en">
-  <ProjectsPage client:load lang="en" projects={projects} people={people} />
+<BaseLayout title={ui.projects.title[lang]} description={ui.projects.description[lang]} lang={lang}>
+  <ProjectsPage client:load lang={lang} projects={projects} people={people} />
 </BaseLayout>
-
 

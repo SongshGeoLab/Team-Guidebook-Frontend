@@ -4,6 +4,13 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { NewsPage } from '../../../components/react/pages/NewsPage';
 import { getGiscusConfig } from '../../../config/giscus';
 import { entrySlug } from '../../../utils/entrySlug';
+import { LOCALES, ui, type Lang } from '../../../i18n/ui';
+
+export function getStaticPaths() {
+  return LOCALES.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
 
 const allNews = await getCollection('news', ({ data }) => data.publish !== false);
 
@@ -28,14 +35,14 @@ const news = allNews
     relatedPeople: (item.data.related_people || [])
       .map((id: string) => peopleById.get(id))
       .filter(Boolean)
-      .map((p: any) => ({ name: p.name, url: `/en/people/${p.slug}` }))
+      .map((p: any) => ({ name: p.name, url: `/${lang}/people/${p.slug}` }))
   }));
 
 // Get Giscus configuration
 const giscusConfig = getGiscusConfig();
 ---
 
-<BaseLayout title="News" description="Lab news and updates" lang="en">
-  <NewsPage client:load lang="en" news={news} giscusConfig={giscusConfig} />
+<BaseLayout title={ui.news.title[lang]} description={ui.news.description[lang]} lang={lang}>
+  <NewsPage client:load lang={lang} news={news} giscusConfig={giscusConfig} />
 </BaseLayout>
 

@@ -1,16 +1,20 @@
 ---
 import { getCollection , render } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { LOCALES, ui, type Lang } from '../../../i18n/ui';
 import { entrySlug } from '../../../utils/entrySlug';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects', ({ data }) => data.publish !== false);
-  return projects.map((project) => ({
-    params: { slug: entrySlug(project) },
-    props: { project },
-  }));
+  return LOCALES.flatMap((lang) =>
+    projects.map((project) => ({
+      params: { lang, slug: entrySlug(project) },
+      props: { project },
+    }))
+  );
 }
 
+const lang = Astro.params.lang as Lang;
 const { project } = Astro.props;
 const { Content } = await render(project);
 
@@ -36,25 +40,25 @@ const endDate = project.data.end_date
   : null;
 ---
 
-<BaseLayout title={project.data.title} description={project.data.title} lang="en">
+<BaseLayout title={project.data.title} description={project.data.title} lang={lang}>
   <article class="prose dark:prose-invert max-w-none">
     <h1>{project.data.title}</h1>
     
     <div class="mt-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       <dl class="grid md:grid-cols-2 gap-4">
         <div>
-          <dt class="font-semibold text-gray-700 dark:text-gray-300">Duration</dt>
+          <dt class="font-semibold text-gray-700 dark:text-gray-300">项目时间</dt>
           <dd class="text-gray-600 dark:text-gray-400">
-            {startDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            {startDate.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             {endDate 
-              ? ` - ${endDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
-              : ' - Present'}
+              ? ` - ${endDate.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+              : ` - ${ui.project.present[lang]}`}
           </dd>
         </div>
         
         {project.data.people && project.data.people.length > 0 && (
           <div>
-            <dt class="font-semibold text-gray-700 dark:text-gray-300">Team Members</dt>
+            <dt class="font-semibold text-gray-700 dark:text-gray-300">{ui.project.participants[lang]}</dt>
             <dd class="text-gray-600 dark:text-gray-400">
               <ul class="list-none p-0 m-0">
                 {project.data.people.map((personId) => {
@@ -62,7 +66,7 @@ const endDate = project.data.end_date
                   return person ? (
                     <li>
                       <a 
-                        href={`/en/people/${person.slug}`}
+                        href={`/${lang}/people/${person.slug}`}
                         class="text-blue-600 hover:underline"
                       >
                         {person.name}
@@ -79,7 +83,7 @@ const endDate = project.data.end_date
         
         {project.data.repo && (
           <div>
-            <dt class="font-semibold text-gray-700 dark:text-gray-300">Repository</dt>
+            <dt class="font-semibold text-gray-700 dark:text-gray-300">{ui.project.repository[lang]}</dt>
             <dd class="text-gray-600 dark:text-gray-400">
               <a 
                 href={project.data.repo}
@@ -95,7 +99,7 @@ const endDate = project.data.end_date
         
         {project.data.tags && project.data.tags.length > 0 && (
           <div>
-            <dt class="font-semibold text-gray-700 dark:text-gray-300">Tags</dt>
+            <dt class="font-semibold text-gray-700 dark:text-gray-300">标签</dt>
             <dd class="text-gray-600 dark:text-gray-400">
               <div class="flex flex-wrap gap-2">
                 {project.data.tags.map((tag) => (

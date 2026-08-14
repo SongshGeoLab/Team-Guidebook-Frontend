@@ -2,6 +2,7 @@
 import { getCollection , render } from 'astro:content';
 import { getLibraryEntries } from '../../../utils/libraryEntries';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { LOCALES, ui, type Lang } from '../../../i18n/ui';
 import { LibrarySidebar } from '../../../components/react/ui/LibrarySidebar';
 import { buildLibraryTree } from '../../../utils/libraryTree';
 
@@ -54,9 +55,17 @@ export async function getStaticPaths() {
     seen.set(route.params.slug, route.props.item.id);
   }
 
-  return routes;
+  // Cross the slugs with both locales. Dedup above runs on the slug alone, so
+  // it stays a per-locale uniqueness check.
+  return LOCALES.flatMap((lang) =>
+    routes.map((route) => ({
+      params: { lang, slug: route.params.slug },
+      props: route.props
+    }))
+  );
 }
 
+const lang = Astro.params.lang as Lang;
 const { item } = Astro.props;
 const { Content } = await render(item);
 const title = item.data.title || item.id.split('/').pop()?.replace(/\.md$/, '') || item.id;
@@ -92,14 +101,14 @@ const libraryItems = allLibrary.map((libItem) => {
 const tree = buildLibraryTree(libraryItems);
 ---
 
-<BaseLayout title={title} description={title} lang="zh">
+<BaseLayout title={title} description={title} lang={lang}>
   <div class="flex flex-col lg:flex-row gap-8">
     <LibrarySidebar 
       client:load 
       tree={tree} 
       currentSlug={currentSlug} 
-      lang="zh" 
-      basePath="/zh/library"
+      lang={lang} 
+      basePath={`/${lang}/library`}
     />
     <article class="flex-1 prose dark:prose-invert max-w-none min-w-0">
       <h1>{title}</h1>
