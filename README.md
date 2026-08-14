@@ -14,6 +14,11 @@ Astro 5 + TypeScript + Tailwind static site for the lab. Content is Obsidian-dri
   - `npm run build` will trigger the same setup script via `prebuild`.
   - See [Deployment (Vercel)](#deployment-vercel) section for detailed setup instructions.
 - Manual preparation: `npm run setup:content` triggers the setup script without running dev/build.
+- No vault access? Build against the committed fixtures instead:
+  `CONTENT_DIR=fixtures/Team-Guidebook npm run build`. `fixtures/Team-Guidebook/`
+  holds a handful of fake entries covering every collection. CI uses exactly this,
+  which keeps the pipeline hermetic — no secrets, no dependency on the private
+  content repository.
 
 See [Configuration Guide](./docs/CONFIGURATION.md) for detailed setup instructions, especially for private content repositories.
 
@@ -24,6 +29,7 @@ For content maintainers, see [Content Maintenance Guide](./docs/CONTENT_MAINTENA
 | Command             | Action                               |
 | :------------------ | :----------------------------------- |
 | `npm install`       | Install dependencies                 |
+| `npm run check`     | Type-check (`astro check`)           |
 | `npm run dev`       | Prepare content, start dev server    |
 | `npm run build`     | Prepare content, build to `dist/`    |
 | `npm run preview`   | Preview the production build locally |

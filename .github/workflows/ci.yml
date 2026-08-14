@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+# A newer push to the same branch makes the in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Type-check and build
+    runs-on: ubuntu-latest
+    env:
+      # Build against the committed fixtures rather than the private content
+      # repository, so CI is hermetic: no secrets, no network dependency on
+      # SongshGeoLab/Team-Guidebook, and forks can run it too.
+      CONTENT_DIR: fixtures/Team-Guidebook
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # `astro check` needs the generated collection types, which `astro sync`
+      # produces; the prebuild hook wires the fixtures into src/content/ first.
+      - run: npm run setup:content
+      - run: npx astro sync
+      - run: npm run check
+
+      - run: npm run build

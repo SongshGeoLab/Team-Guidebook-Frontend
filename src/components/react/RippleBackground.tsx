@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree, createPortal } from '@react-three/fiber';
 import { useTexture, useFBO } from '@react-three/drei';
-import { Scene, OrthographicCamera } from 'three';
+import { Scene, OrthographicCamera, type Texture } from 'three';
 
 const simulationVertexShader = `
   varying vec2 vUv;
@@ -114,7 +114,7 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
 
   const simUniforms = useMemo(
     () => ({
-      uTexture: { value: null },
+      uTexture: { value: null as Texture | null },
       uMouse: { value: [-100, -100] },
       uResolution: { value: [simRes, simRes] },
       uRadius: { value: 0.03 },
@@ -126,7 +126,7 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
   const distUniforms = useMemo(
     () => ({
       uTexture: { value: bgTexture },
-      uDisplacement: { value: null },
+      uDisplacement: { value: null as Texture | null },
       uTime: { value: 0 }
     }),
     [bgTexture]

@@ -2,11 +2,15 @@
   "name": "deeply-disk",
   "type": "module",
   "version": "0.0.1",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "predev": "node scripts/setup-content.mjs",
     "prebuild": "node scripts/setup-content.mjs",
     "setup:content": "node scripts/setup-content.mjs",
     "debug:content": "node scripts/debug-content.mjs",
+    "check": "astro check",
     "dev": "astro dev",
     "build": "astro build",
     "postbuild": "pagefind --site dist",

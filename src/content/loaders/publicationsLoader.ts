@@ -133,7 +133,7 @@ function parseBibEntry(entry: any, bibKey: string, originalBibtex?: string): Pub
         });
       } else if (typeof entry.author === 'string') {
         // Split by "and" if it's a string
-        authors = entry.author.split(/\s+and\s+/i).map(a => a.trim()).filter(Boolean);
+        authors = entry.author.split(/\s+and\s+/i).map((a: string) => a.trim()).filter(Boolean);
       }
     }
 
@@ -165,9 +165,9 @@ function parseBibEntry(entry: any, bibKey: string, originalBibtex?: string): Pub
     let tags: string[] = [];
     if (entry.keywords) {
       if (Array.isArray(entry.keywords)) {
-        tags = entry.keywords.map(k => String(k).trim()).filter(Boolean);
+        tags = entry.keywords.map((k: unknown) => String(k).trim()).filter(Boolean);
       } else if (typeof entry.keywords === 'string') {
-        tags = entry.keywords.split(/[,;]/).map(k => k.trim()).filter(Boolean);
+        tags = entry.keywords.split(/[,;]/).map((k: string) => k.trim()).filter(Boolean);
       }
     }
 
@@ -315,7 +315,9 @@ export function publicationsLoader(): Loader {
             }
           }
         } catch (error) {
-          context.logger.error(`Error processing BibTeX file ${bibFile}:`, error);
+          context.logger.error(
+            `Error processing BibTeX file ${bibFile}: ${error instanceof Error ? error.message : String(error)}`
+          );
           // Continue processing other files
         }
       }

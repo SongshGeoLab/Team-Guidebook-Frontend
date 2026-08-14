@@ -172,7 +172,7 @@ export function SearchPage({ lang }: SearchPageProps) {
             return {
               id: result.id,
               url: data.url,
-              title: extractTitle(data.url, data.meta),
+              title: extractTitle(data.url, data.meta || {}),
               excerpt: data.excerpt || '',
               meta: data.meta || {}
             };

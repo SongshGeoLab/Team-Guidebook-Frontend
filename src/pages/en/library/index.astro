@@ -16,7 +16,7 @@ const items = allLibrary.map((item) => {
     slug,
     title: item.data.title || parts[parts.length - 1] || item.id,
     date: item.data.date ? (item.data.date instanceof Date ? item.data.date.toISOString().slice(0, 10) : String(item.data.date)) : undefined,
-    description: item.data.description || item.data.excerpt || '',
+    description: String(item.data.description || item.data.excerpt || ''),
     tags: item.data.tags || [],
     detailUrl: `/en/library/${slug}`
   };
