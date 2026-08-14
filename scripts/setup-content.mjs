@@ -71,9 +71,29 @@ log('='.repeat(60));
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Does `p` resolve to something readable?
+ * Follows symlinks, so a dangling link reports false. Use for SOURCE paths,
+ * where the question is "can I read this content?".
+ */
 const exists = (p) => {
   try {
     fs.accessSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Is there anything at `p` at all — including a dangling symlink?
+ * Does NOT follow symlinks. Use for DESTINATION paths, where the question is
+ * "is this path occupied?", because `symlinkSync` throws EEXIST on a dangling
+ * link that `exists()` cannot see.
+ */
+const existsAny = (p) => {
+  try {
+    fs.lstatSync(p);
     return true;
   } catch {
     return false;
@@ -292,7 +312,7 @@ const setupContentCollections = async (contentRoot) => {
     // Ensure parent directory exists for the target symlink
     // This is crucial for deeply nested paths or fresh builds
     const targetDir = path.dirname(target);
-    if (!exists(targetDir)) {
+    if (!existsAny(targetDir)) {
       log(`Creating parent directory for ${collectionName}: ${targetDir}`);
       fs.mkdirSync(targetDir, { recursive: true });
     }
@@ -305,7 +325,7 @@ const setupContentCollections = async (contentRoot) => {
     // Remove existing symlink or directory
     // CRITICAL: Must remove before creating new symlink, especially in CI environments
     // Always check and remove, even if it seems like it shouldn't exist
-    if (exists(target)) {
+    if (existsAny(target)) {
       log(`  Target already exists, removing: ${target}`);
       try {
         const stat = fs.lstatSync(target);
@@ -336,7 +356,7 @@ const setupContentCollections = async (contentRoot) => {
         for (let attempt = 0; attempt < 5; attempt++) {
           try {
             // Re-check stat on each attempt (might have changed)
-            if (exists(target)) {
+            if (existsAny(target)) {
               const currentStat = fs.lstatSync(target);
               // Try unlink first for symlinks, then rmSync for directories/files
               if (currentStat.isSymbolicLink()) {
@@ -374,12 +394,12 @@ const setupContentCollections = async (contentRoot) => {
         if (removed) {
           // Wait a bit and verify it's actually gone
           await sleep(50);
-          if (exists(target)) {
+          if (existsAny(target)) {
             error(`  ERROR: ${target} still exists after removal!`);
             // Last resort: try to remove parent directory and recreate
             try {
               const parentDir = path.dirname(target);
-              if (exists(parentDir)) {
+              if (existsAny(parentDir)) {
                 fs.rmSync(target, { recursive: true, force: true, maxRetries: 3 });
                 await sleep(100);
               }
@@ -403,7 +423,7 @@ const setupContentCollections = async (contentRoot) => {
         log(`CI environment detected, copying ${collectionName} collection instead of symlink...`);
         // CRITICAL: In CI mode, ensure target is completely removed before copying
         // fs.cpSync cannot overwrite non-directories, so we must remove first
-        if (exists(target)) {
+        if (existsAny(target)) {
           log(`  Removing existing target before copy: ${target}`);
           try {
             const targetStat = fs.lstatSync(target);
@@ -424,7 +444,7 @@ const setupContentCollections = async (contentRoot) => {
             // Wait a bit to ensure filesystem has processed the removal
             await sleep(50);
             // Verify removal
-            if (exists(target)) {
+            if (existsAny(target)) {
               error(`  ERROR: Target still exists after removal, forcing recursive removal...`);
               fs.rmSync(target, { recursive: true, force: true, maxRetries: 3 });
               await sleep(100);
@@ -450,7 +470,7 @@ const setupContentCollections = async (contentRoot) => {
       }
       
       // Verify the operation was successful
-      if (exists(target)) {
+      if (existsAny(target)) {
         const stat = fs.lstatSync(target);
         if (useCopy) {
            if (stat.isDirectory()) {
@@ -492,13 +512,13 @@ const setupContentCollections = async (contentRoot) => {
         try {
           // CRITICAL: Force remove target first, regardless of type
           // This is a fallback, so we need to be extra aggressive about removal
-          if (exists(target)) {
+          if (existsAny(target)) {
             log(`  Force removing existing target before copy: ${target}`);
             
             // Try multiple removal strategies
             for (let removalAttempt = 0; removalAttempt < 5; removalAttempt++) {
               try {
-                if (!exists(target)) {
+                if (!existsAny(target)) {
                   log(`  Target already removed`);
                   break;
                 }
@@ -524,7 +544,7 @@ const setupContentCollections = async (contentRoot) => {
                 await sleep(100);
                 
                 // Verify removal
-                if (!exists(target)) {
+                if (!existsAny(target)) {
                   log(`  ✓ Target successfully removed`);
                   break;
                 } else {
@@ -545,7 +565,7 @@ const setupContentCollections = async (contentRoot) => {
             }
             
             // Final check
-            if (exists(target)) {
+            if (existsAny(target)) {
               throw new Error(`Target ${target} still exists after all removal attempts - cannot proceed with copy`);
             }
           }
@@ -556,7 +576,7 @@ const setupContentCollections = async (contentRoot) => {
           log(`  ✓ Copied ${collectionName} collection: ${target} <- ${sourcePath}`);
           
           // Verify copy succeeded
-          if (exists(target)) {
+          if (existsAny(target)) {
             const copiedFiles = fs.readdirSync(target);
             log(`  ✓ Copy verified: ${copiedFiles.length} items`);
           } else {
@@ -587,9 +607,11 @@ const setupContentCollections = async (contentRoot) => {
   // Alternative: Create individual symlinks for each subdirectory (more complex)
   await linkCollection('library', '图书馆');
   
-  // Publications: map to 图书馆/文献 (short-term, markdown-based)
-  await linkCollection('publications', '图书馆/文献');
-  
+  // Publications deliberately has NO symlink: the collection is served by a
+  // custom loader (src/content/loaders/publicationsLoader.ts) that reads the
+  // .bib file directly. Linking 图书馆/文献 here only ever logged an error,
+  // because that directory does not exist in the vault.
+
   // Note: News collection requires a custom loader to extract bullet items
   // from Daily Notes (档案馆/YYYY-MM-DD.md). This will be implemented
   // in src/content/loaders/news.ts and wired via config.ts loader option.
