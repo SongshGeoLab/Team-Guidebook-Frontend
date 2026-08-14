@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree, createPortal } from '@react-three/fiber';
 import { useTexture, useFBO } from '@react-three/drei';
-import { Scene, OrthographicCamera, type Texture } from 'three';
+import { Scene, OrthographicCamera, type Texture, type ShaderMaterial } from 'three';
 
 const simulationVertexShader = `
   varying vec2 vUv;
@@ -99,6 +99,13 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
   const prevFBO = useRef(fboB);
   const mouse = useRef({ x: -100, y: -100 });
 
+  // @react-three/fiber v9 no longer mounts the `uniforms` prop by reference —
+  // the material ends up with its own copy, so mutating the memoised object
+  // below reaches nothing. (Verified: material.uniforms !== distUniforms, and
+  // its uTime stayed 0 while ours advanced.) Write through these refs instead.
+  const simMat = useRef<ShaderMaterial>(null);
+  const distMat = useRef<ShaderMaterial>(null);
+
   // Respect prefers-reduced-motion. Both the pointer ripple AND the idle shader
   // drift are motion; skipping only the listener would still animate the page.
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -147,12 +154,16 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
   );
 
   useFrame((state) => {
+    const sim = simMat.current?.uniforms;
+    const dist = distMat.current?.uniforms;
+    if (!sim || !dist) return;
+
     // One static frame is still drawn (the background image must appear); it is
     // the per-frame updates that are suppressed.
     if (reduceMotion) return;
 
-    simUniforms.uMouse.value = [mouse.current.x, mouse.current.y];
-    simUniforms.uTexture.value = prevFBO.current.texture;
+    sim.uMouse.value = [mouse.current.x, mouse.current.y];
+    sim.uTexture.value = prevFBO.current.texture;
 
     gl.setRenderTarget(currentFBO.current);
     gl.render(simScene, simCam);
@@ -162,8 +173,8 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
     currentFBO.current = prevFBO.current;
     prevFBO.current = temp;
 
-    distUniforms.uDisplacement.value = prevFBO.current.texture;
-    distUniforms.uTime.value = state.clock.elapsedTime;
+    dist.uDisplacement.value = prevFBO.current.texture;
+    dist.uTime.value = state.clock.elapsedTime;
   });
 
   return (
@@ -172,6 +183,7 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
         <mesh>
           <planeGeometry args={[2, 2]} />
           <shaderMaterial
+            ref={simMat}
             uniforms={simUniforms}
             vertexShader={simulationVertexShader}
             fragmentShader={simulationFragmentShader}
@@ -183,6 +195,7 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
       <mesh>
         <planeGeometry args={[viewport.width, viewport.height]} />
         <shaderMaterial
+          ref={distMat}
           uniforms={distUniforms}
           vertexShader={distortionVertexShader}
           fragmentShader={distortionFragmentShader}
