@@ -215,6 +215,11 @@ export function publicationsLoader(): Loader {
     name: 'publications-loader',
     load: async (context: LoaderContext) => {
       const contentRoot = getContentRoot();
+
+      // Same reasoning as newsLoader: full rebuild each run, so clear first.
+      // Otherwise an entry deleted from the .bib stayed on the publications
+      // page indefinitely.
+      context.store.clear();
       
       // Try 图书馆/文献/ first, then fallback to 图书馆/ root
       const publicationsDir = path.join(contentRoot, '图书馆', '文献');
@@ -322,6 +327,7 @@ export function publicationsLoader(): Loader {
 
             if (publication) {
               context.store.set({
+                digest: context.generateDigest?.(JSON.stringify(publication)),
                 id: publication.id,
                 data: {
                   title: publication.title,

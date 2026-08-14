@@ -76,6 +76,17 @@ export function newsLoader(): Loader {
     load: async (context: LoaderContext) => {
       const contentRoot = getContentRoot();
       const newsDir = path.join(contentRoot, '档案馆');
+
+      // Astro persists the store across runs (.astro/ and node_modules/.astro).
+      // This loader rebuilds every entry from scratch, so without clearing,
+      // deleting a bullet from a daily note left its entry on the site forever
+      // — invisibly, and with no documented way out short of deleting the
+      // cache by hand.
+      context.store.clear();
+
+      // Without a watcher, editing 档案馆/*.md in dev changed nothing until the
+      // server was restarted.
+      context.watcher?.add(newsDir);
       const aliasMap = loadPeopleMap(contentRoot);
 
       if (!fs.existsSync(newsDir)) {
@@ -171,6 +182,8 @@ export function newsLoader(): Loader {
 
             context.store.set({
               id,
+              // Lets Astro skip unchanged entries instead of re-rendering all.
+              digest: context.generateDigest?.(JSON.stringify({ bulletContent, date, file })),
               data: {
                 date,
                 title,
