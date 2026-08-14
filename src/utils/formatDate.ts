@@ -12,8 +12,9 @@
  * where the reader is.
  */
 
-export type Lang = 'zh' | 'en';
+import type { Lang } from '../i18n/ui';
 
+/** BCP 47 tag per app locale. */
 const LOCALES: Record<Lang, string> = { zh: 'zh-CN', en: 'en-US' };
 
 export function localeOf(lang: string): string {

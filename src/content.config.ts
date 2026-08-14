@@ -1,5 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
+import { OWNED_BY_OTHER_COLLECTIONS_GLOBS } from './utils/contentLayout.js';
 import { newsLoader } from './content/loaders/newsLoader';
 import { publicationsLoader } from './content/loaders/publicationsLoader';
 
@@ -132,7 +133,7 @@ export const collections = {
     // Excluded here as well as in getLibraryEntries(), so a stray consumer
     // cannot resurface them.
     loader: glob({
-      pattern: ['**/*.md', '!项目/**', '!文献/**'],
+      pattern: ['**/*.md', ...OWNED_BY_OTHER_COLLECTIONS_GLOBS],
       base: './src/content/library',
       generateId: keepPathAsId
     }),

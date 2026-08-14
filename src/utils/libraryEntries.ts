@@ -1,4 +1,5 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
+import { isOwnedByOtherCollection } from './contentLayout.js';
 
 /**
  * Subdirectories of 图书馆/ that have their own collection and must not also
@@ -14,12 +15,6 @@ import { getCollection, type CollectionEntry } from 'astro:content';
  * config.ts acknowledged this in a comment and deferred it to "query time";
  * this is that filter, in one place rather than at each of six call sites.
  */
-const OWNED_BY_OTHER_COLLECTIONS = ['项目', '文献'];
-
-function isOwnedElsewhere(id: string): boolean {
-  const firstSegment = id.split('/')[0];
-  return OWNED_BY_OTHER_COLLECTIONS.includes(firstSegment);
-}
 
 /**
  * Published library entries, excluding anything another collection owns.
@@ -29,5 +24,5 @@ function isOwnedElsewhere(id: string): boolean {
  */
 export async function getLibraryEntries(): Promise<CollectionEntry<'library'>[]> {
   const entries = await getCollection('library', ({ data }) => data.publish !== false);
-  return entries.filter((entry) => !isOwnedElsewhere(entry.id));
+  return entries.filter((entry) => !isOwnedByOtherCollection(entry.id));
 }

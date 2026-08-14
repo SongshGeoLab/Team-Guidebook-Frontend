@@ -14,10 +14,6 @@ export type Lang = (typeof LOCALES)[number];
 /** The locale `/` redirects to. Mirrors `redirects` in astro.config.mjs. */
 export const DEFAULT_LOCALE: Lang = 'en';
 
-export function isLang(value: unknown): value is Lang {
-  return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
-}
-
 type Dict = Record<Lang, string>;
 
 export const ui = {
@@ -78,13 +74,14 @@ export const ui = {
   },
   project: {
     present: { zh: '至今', en: 'Present' } satisfies Dict,
-    participants: { zh: '参与人员', en: 'Participants' } satisfies Dict,
+    participants: { zh: '参与人员', en: 'Team Members' } satisfies Dict,
     repository: { zh: '代码仓库', en: 'Repository' } satisfies Dict,
-    period: { zh: '起止时间', en: 'Period' } satisfies Dict
+    duration: { zh: '项目时间', en: 'Duration' } satisfies Dict,
+    tags: { zh: '标签', en: 'Tags' } satisfies Dict
+  },
+  person: {
+    email: { zh: '邮箱：', en: 'Email: ' } satisfies Dict,
+    links: { zh: '链接：', en: 'Links: ' } satisfies Dict,
+    interests: { zh: '研究兴趣：', en: 'Research Interests: ' } satisfies Dict
   }
 } as const;
-
-/** Pick the string for `lang` out of a dictionary. */
-export function t(dict: Dict, lang: Lang): string {
-  return dict[lang];
-}

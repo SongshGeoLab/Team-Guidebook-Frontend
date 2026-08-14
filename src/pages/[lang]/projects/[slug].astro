@@ -47,7 +47,7 @@ const endDate = project.data.end_date
     <div class="mt-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       <dl class="grid md:grid-cols-2 gap-4">
         <div>
-          <dt class="font-semibold text-gray-700 dark:text-gray-300">项目时间</dt>
+          <dt class="font-semibold text-gray-700 dark:text-gray-300">{ui.project.duration[lang]}</dt>
           <dd class="text-gray-600 dark:text-gray-400">
             {startDate.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             {endDate 
@@ -99,7 +99,7 @@ const endDate = project.data.end_date
         
         {project.data.tags && project.data.tags.length > 0 && (
           <div>
-            <dt class="font-semibold text-gray-700 dark:text-gray-300">标签</dt>
+            <dt class="font-semibold text-gray-700 dark:text-gray-300">{ui.project.tags[lang]}</dt>
             <dd class="text-gray-600 dark:text-gray-400">
               <div class="flex flex-wrap gap-2">
                 {project.data.tags.map((tag) => (

@@ -22,6 +22,7 @@ import path from 'node:path';
 import fg from 'fast-glob';
 import matter from 'gray-matter';
 import { visit } from 'unist-util-visit';
+import { isOwnedByOtherCollection } from './contentLayout.js';
 
 const IMAGE_EXTENSIONS = new Set([
   '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif', '.bmp'
@@ -58,10 +59,8 @@ export function buildContentIndex(cwd = process.cwd()) {
 
   for (const file of files) {
     // 项目/ and 文献/ live under 图书馆/ but belong to the projects and
-    // publications collections; they get no library route. Keep this in step
-    // with src/utils/libraryEntries.ts.
-    const firstSegment = file.split('/')[0];
-    if (firstSegment === '项目' || firstSegment === '文献') continue;
+    // publications collections, so they get no library route.
+    if (isOwnedByOtherCollection(file)) continue;
 
     // Only index what actually gets a route. The library pages filter on
     // `publish !== false`, so indexing an unpublished entry would hand out a

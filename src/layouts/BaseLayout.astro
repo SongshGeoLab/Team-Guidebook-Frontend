@@ -3,6 +3,7 @@ import '../styles/global.css';
 import Header from '../components/Header.astro';
 import RippleBackground from '../components/react/RippleBackground.tsx';
 import Footer from '../components/Footer.astro';
+import { LOCALES, DEFAULT_LOCALE } from '../i18n/ui';
 
 interface Props {
   title: string;
@@ -12,8 +13,8 @@ interface Props {
 
 const { title, description = "Lab Website", lang = "zh" } = Astro.props;
 
-const LOCALES = ['zh', 'en'];
-const DEFAULT_LOCALE = 'en'; // matches the `/` redirect in astro.config.mjs
+// LOCALES / DEFAULT_LOCALE come from the i18n module so the locale set has one
+// definition; redeclaring them here is how the two drift apart.
 
 // `/zh/library/x` and `/en/library/x` are the same document in two locales.
 // Without canonical + hreflang, search engines see pure duplicate content —
