@@ -29,7 +29,7 @@ export function CitationItem({ publication }: CitationItemProps) {
         <div className="flex items-center gap-2 text-sm text-teal-400 font-medium mt-1">
           <BookOpen className="w-4 h-4" />
           <span>{publication.venue}</span>
-          {publication.year && (
+          {publication.year != null && (
             <>
               <span className="text-gray-500">•</span>
               <span className="text-gray-400">{publication.year}</span>

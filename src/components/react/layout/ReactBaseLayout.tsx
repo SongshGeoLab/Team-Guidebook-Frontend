@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Github } from 'lucide-react';
+import { GitBranch } from 'lucide-react';
 import clsx from 'clsx';
 
 interface ReactBaseLayoutProps {
@@ -58,7 +58,7 @@ export function ReactBaseLayout({ children, lang, activePage = 'home' }: ReactBa
             href="https://github.com"
             className="flex items-center gap-2 text-xs font-bold text-white/90 hover:text-teal-300 transition-colors border border-white/20 rounded-full px-3 py-1.5 hover:bg-white/10 hover:border-white/40"
           >
-            <Github className="w-3 h-3" />
+            <GitBranch className="w-3 h-3" />
             GitHub
           </a>
           <div className="h-4 w-px bg-white/20 mx-2" />
@@ -79,7 +79,7 @@ export function ReactBaseLayout({ children, lang, activePage = 'home' }: ReactBa
         <div className="max-w-7xl mx-auto px-6 py-8 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
           <div className="flex items-center gap-6">
             <a href="https://github.com" className="hover:text-teal-300 transition-colors">
-              <Github className="w-5 h-5" />
+              <GitBranch className="w-5 h-5" />
             </a>
             <div className="h-4 w-px bg-white/20 mx-2" />
             <a

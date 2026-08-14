@@ -1,5 +1,5 @@
 ---
-import { getCollection, getEntry } from 'astro:content';
+import { getCollection, getEntry , render } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { entrySlug } from '../../../utils/entrySlug';
 
@@ -12,7 +12,7 @@ export async function getStaticPaths() {
 }
 
 const { person } = Astro.props;
-const { Content } = await person.render();
+const { Content } = await render(person);
 ---
 
 <BaseLayout title={person.data.name} description={`${person.data.name} - ${person.data.role}`} lang="en">

@@ -9,7 +9,9 @@ const publications = allPubs.map((pub) => ({
   title: pub.data.title || pub.id,
   authors: pub.data.authors || [],
   venue: pub.data.venue,
-  year: typeof pub.data.year === 'number' ? pub.data.year : Number(pub.data.year),
+  // Number(undefined) is NaN, and `{NaN && ...}` renders the literal string
+  // "NaN" — React only skips `false`/`null`/`undefined`. Keep it undefined.
+  year: typeof pub.data.year === 'number' ? pub.data.year : undefined,
   tags: pub.data.tags || [],
   url: pub.data.pdf || pub.data.doi,
   bibtex: pub.data.bibtex

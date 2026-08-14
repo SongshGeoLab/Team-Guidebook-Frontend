@@ -1,6 +1,16 @@
 import { defineCollection, z } from 'astro:content';
-import { newsLoader } from './loaders/newsLoader';
-import { publicationsLoader } from './loaders/publicationsLoader';
+import { glob } from 'astro/loaders';
+import { newsLoader } from './content/loaders/newsLoader';
+import { publicationsLoader } from './content/loaders/publicationsLoader';
+
+/**
+ * Astro 6 removed legacy `type: 'content'` collections, so these are glob
+ * loaders now. The default generateId slugifies the path, which would silently
+ * rewrite every existing library URL (`词条/Git` -> `词条/git`). Keep the
+ * on-disk path verbatim instead — routes are built from these ids, and
+ * src/utils/obsidian-links.js resolves wiki links against the same paths.
+ */
+const keepPathAsId = ({ entry }: { entry: string }) => entry.replace(/\.md$/i, '');
 
 /**
  * Base schema fields shared across multiple collections.
@@ -106,11 +116,11 @@ const publicationsSchema = z.object({
  */
 export const collections = {
   people: defineCollection({
-    type: 'content',
+    loader: glob({ pattern: '**/*.md', base: './src/content/people', generateId: keepPathAsId }),
     schema: peopleSchema,
   }),
   projects: defineCollection({
-    type: 'content',
+    loader: glob({ pattern: '**/*.md', base: './src/content/projects', generateId: keepPathAsId }),
     schema: projectsSchema,
   }),
   news: defineCollection({
@@ -118,7 +128,14 @@ export const collections = {
     schema: newsSchema,
   }),
   library: defineCollection({
-    type: 'content',
+    // 项目/ and 文献/ live under this base but belong to other collections.
+    // Excluded here as well as in getLibraryEntries(), so a stray consumer
+    // cannot resurface them.
+    loader: glob({
+      pattern: ['**/*.md', '!项目/**', '!文献/**'],
+      base: './src/content/library',
+      generateId: keepPathAsId
+    }),
     schema: librarySchema,
     // Note: Library symlink points to 图书馆/, which includes 项目/ and 文献/
     // We need to filter these out. This can be done via:

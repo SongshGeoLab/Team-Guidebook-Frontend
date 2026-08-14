@@ -1,5 +1,5 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection , render } from 'astro:content';
 import { getLibraryEntries } from '../../../utils/libraryEntries';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { LibrarySidebar } from '../../../components/react/ui/LibrarySidebar';
@@ -58,7 +58,7 @@ export async function getStaticPaths() {
 }
 
 const { item } = Astro.props;
-const { Content } = await item.render();
+const { Content } = await render(item);
 const title = item.data.title || item.id.split('/').pop()?.replace(/\.md$/, '') || item.id;
 
 // Build slug from item.id

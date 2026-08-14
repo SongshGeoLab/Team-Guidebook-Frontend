@@ -1,6 +1,7 @@
 import type { Person, Project } from '../types';
 import { motion } from 'motion/react';
-import { ArrowRight, Calendar, Github } from 'lucide-react';
+// lucide-react v1 dropped brand icons; GitBranch is the nearest semantic fit.
+import { ArrowRight, Calendar, GitBranch } from 'lucide-react';
 
 interface ProjectsPageProps {
   lang: 'zh' | 'en';
@@ -68,7 +69,7 @@ export function ProjectsPage({ lang, projects, people = [] }: ProjectsPageProps)
                     href={project.repo}
                     className="inline-flex items-center gap-1 text-teal-300 hover:text-teal-200"
                   >
-                    <Github className="w-4 h-4" />
+                    <GitBranch className="w-4 h-4" />
                     Repo
                   </a>
                 )}
