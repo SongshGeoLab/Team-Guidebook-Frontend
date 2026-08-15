@@ -35,6 +35,11 @@ jobs:
       - run: npm run lint
       - run: npm test
 
+      # Cross-reference validation. `npm run build` below cannot catch a
+      # research theme citing a bib_key that does not exist — it builds fine and
+      # silently omits the paper — so the fixtures are checked for it here.
+      - run: npm run check:content
+
       # `astro check` needs the generated collection types, which `astro sync`
       # produces; the prebuild hook wires the fixtures into src/content/ first.
       - run: npm run setup:content
