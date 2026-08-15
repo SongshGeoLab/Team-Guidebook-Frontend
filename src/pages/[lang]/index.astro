@@ -4,6 +4,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { HomePage } from '../../components/react/pages/HomePage';
 import { entrySlug } from '../../utils/entrySlug';
 import { getSiteConfig } from '../../utils/siteConfig';
+import { pickLocalized } from '../../utils/localized';
 import { LOCALES, ui, type Lang } from '../../i18n/ui';
 
 export function getStaticPaths() {
@@ -31,18 +32,28 @@ const newsItems = allNews
   }));
 
 const allProjects = await getCollection('projects', ({ data }) => data.publish !== false);
-const featuredProjects = allProjects.slice(0, 3).map((project) => ({
-  id: entrySlug(project),
-  title: project.data.title,
-  tags: project.data.tags || [],
-  start_date: project.data.start_date
-    ? new Date(project.data.start_date).getFullYear().toString()
-    : undefined,
-  end_date: project.data.end_date
-    ? new Date(project.data.end_date).getFullYear().toString()
-    : undefined,
-  detailUrl: `/${lang}/projects/${entrySlug(project)}`
-}));
+
+// "Featured" used to mean `.slice(0, 3)` over an unsorted collection — i.e.
+// whatever order the filesystem returned, which nobody could influence from
+// the vault. It is now an explicit opt-in with an explicit order.
+const featuredProjects = allProjects
+  .filter((project) => project.data.featured)
+  .sort((a, b) => (a.data.order ?? Number.MAX_SAFE_INTEGER) - (b.data.order ?? Number.MAX_SAFE_INTEGER))
+  .slice(0, 3)
+  .map((project) => ({
+    id: entrySlug(project),
+    title: pickLocalized(project.data, 'title', lang) ?? project.data.title,
+    summary: pickLocalized(project.data, 'summary', lang),
+    cover: project.data.cover,
+    tags: project.data.tags || [],
+    start_date: project.data.start_date
+      ? new Date(project.data.start_date).getFullYear().toString()
+      : undefined,
+    end_date: project.data.end_date
+      ? new Date(project.data.end_date).getFullYear().toString()
+      : undefined,
+    detailUrl: `/${lang}/projects/${entrySlug(project)}`
+  }));
 ---
 
 <BaseLayout title={ui.home.title[lang]} description={ui.home.description[lang]} lang={lang}>

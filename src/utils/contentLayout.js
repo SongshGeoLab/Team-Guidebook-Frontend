@@ -82,6 +82,33 @@ export const OWNED_BY_OTHER_COLLECTIONS_GLOBS = OWNED_BY_OTHER_COLLECTIONS.map(
   (dir) => `!${dir}/**`
 );
 
+/** Locales that a `<name>.<locale>.md` sibling file can carry. */
+export const CONTENT_LOCALES = ['zh', 'en'];
+
+/**
+ * Exclusions that keep translation siblings out of a base collection.
+ *
+ * `通讯录/song-shuang.en.md` holds an English biography and nothing else — no
+ * role, no email, because those are language-independent and live once in the
+ * base note. It therefore cannot satisfy the people schema, and it must not
+ * become a second person. It is picked up by the `translations` collection
+ * instead, which has a schema shaped for an overlay.
+ */
+export const TRANSLATION_GLOBS = CONTENT_LOCALES.map((locale) => `!**/*.${locale}.md`);
+
+/**
+ * Where each collection's notes sit, relative to the vault root.
+ *
+ * The `translations` collection globs the whole vault, so its ids are
+ * vault-relative paths (`通讯录/song-shuang.en`). Pairing one back to a people
+ * entry (`song-shuang`) needs this prefix.
+ */
+export const COLLECTION_VAULT_PATHS = {
+  people: '通讯录',
+  projects: '图书馆/项目',
+  library: '图书馆',
+};
+
 /**
  * Does this collection id / relative path belong to another collection?
  * @param {string} idOrPath

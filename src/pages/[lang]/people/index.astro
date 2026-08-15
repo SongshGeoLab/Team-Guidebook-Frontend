@@ -2,6 +2,8 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { entrySlug } from '../../../utils/entrySlug';
+import { pickLocalized } from '../../../utils/localized';
+import { normalizeRole } from '../../../utils/roles';
 import { PeoplePage } from '../../../components/react/pages/PeoplePage';
 import { LOCALES, ui, type Lang } from '../../../i18n/ui';
 
@@ -12,10 +14,26 @@ export function getStaticPaths() {
 const lang = Astro.params.lang as Lang;
 
 const allPeople = await getCollection('people', ({ data }) => data.publish !== false);
-const people = allPeople.map((person) => ({
+
+// Sort here, not in the component: `order` then name, so the grouping in
+// PeoplePage only has to bucket by role. Members without an explicit order sort
+// after those that have one rather than jumping to the front.
+const sorted = [...allPeople].sort((a, b) => {
+  const ao = a.data.order ?? Number.MAX_SAFE_INTEGER;
+  const bo = b.data.order ?? Number.MAX_SAFE_INTEGER;
+  if (ao !== bo) return ao - bo;
+  return a.data.name.localeCompare(b.data.name, lang === 'zh' ? 'zh-CN' : 'en-US');
+});
+
+const people = sorted.map((person) => ({
   id: entrySlug(person),
-  name: person.data.name,
-  role: person.data.role,
+  name: pickLocalized(person.data, 'name', lang) ?? person.data.name,
+  // Already normalised by the schema; normalizeRole again is a no-op that keeps
+  // the type as Role rather than string.
+  role: normalizeRole(person.data.role),
+  title: pickLocalized(person.data, 'title', lang),
+  status: person.data.status,
+  destination: pickLocalized(person.data, 'destination', lang),
   avatar: person.data.avatar,
   email: person.data.email,
   interests: person.data.interests || [],
@@ -27,4 +45,3 @@ const people = allPeople.map((person) => ({
 <BaseLayout title={ui.people.title[lang]} description={ui.people.description[lang]} lang={lang}>
   <PeoplePage client:visible lang={lang} people={people} />
 </BaseLayout>
-

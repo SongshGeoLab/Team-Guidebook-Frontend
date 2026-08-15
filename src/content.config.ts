@@ -1,6 +1,12 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
-import { OWNED_BY_OTHER_COLLECTIONS_GLOBS, findContentRoot } from './utils/contentLayout.js';
+import {
+  OWNED_BY_OTHER_COLLECTIONS_GLOBS,
+  TRANSLATION_GLOBS,
+  CONTENT_LOCALES,
+  findContentRoot,
+} from './utils/contentLayout.js';
+import { normalizeRole } from './utils/roles';
 import { newsLoader } from './content/loaders/newsLoader';
 import { publicationsLoader } from './content/loaders/publicationsLoader';
 
@@ -23,14 +29,49 @@ const baseSchema = {
 };
 
 /**
+ * Translation overlays: `<name>.en.md` beside the note it translates.
+ *
+ * These carry a body and nothing else. Language-independent facts — a person's
+ * role, email, ORCID — live once in the base note; duplicating them per
+ * language is how the two copies drift. See src/utils/localized.ts for the
+ * pairing, and note that overlays are excluded from every base collection by
+ * TRANSLATION_GLOBS so a translation can never become a second person.
+ */
+const translationSchema = z.object({
+  lang: z.enum(CONTENT_LOCALES as [string, ...string[]]).describe('Locale of this body'),
+  translation_of: z.string().optional().describe('Base id, for the author\'s reference'),
+  title: z.string().optional().describe('Translated page title, where one is shown'),
+  publish: z.boolean().default(true),
+});
+
+/**
  * People collection schema.
- * Maps from: .content/Team-Guidebook/通讯录/ (all .md files)
+ * Maps from: .content/Team-Guidebook/通讯录/ (all .md files bar translations)
  */
 const peopleSchema = z.object({
-  ...baseSchema,
+  publish: baseSchema.publish,
+  tags: baseSchema.tags,
   id: z.string().describe('Unique identifier (slug)'),
   name: z.string().describe('Display name'),
-  role: z.string().describe('Role (e.g., "PhD Student", "Professor")'),
+  name_en: z.string().optional().describe('Display name in English'),
+  /**
+   * Canonical position, used for grouping.
+   *
+   * Normalised rather than validated as an enum: the vault predates this
+   * vocabulary, so 'Professor', '教授', ' PhD Student ' and 'phd' must all keep
+   * working. Free-text job titles belong in `title`, not here — this field only
+   * decides which section the person appears in.
+   */
+  role: z.string().transform(normalizeRole).describe('Position: pi | postdoc | phd | master | undergrad | staff | visitor'),
+  title: z.string().optional().describe('Free-text job title shown on the card, e.g. 副教授'),
+  title_en: z.string().optional(),
+  /** Sort key within a role section. Unset sorts last, then by name. */
+  order: z.number().optional().describe('Display order within the role group'),
+  status: z.enum(['current', 'alumni']).default('current').describe('Still in the group?'),
+  destination: z.string().optional().describe('Where an alumnus went next'),
+  destination_en: z.string().optional(),
+  joined: z.union([z.date(), z.string()]).optional().transform(val => val ? new Date(val) : undefined),
+  left: z.union([z.date(), z.string()]).optional().transform(val => val ? new Date(val) : undefined),
   avatar: z.string().optional().describe('Avatar image path (e.g., "/attachments/avatar.jpg")'),
   email: z.string().email().optional().describe('Email address'),
   aliases: z.union([z.array(z.string()), z.null()]).default([]).transform(val => val || []).describe('Alternative names for resolving #P/<Name> tags'),
@@ -38,7 +79,15 @@ const peopleSchema = z.object({
     label: z.string(),
     url: z.string().url(),
   })).optional().describe('External links (homepage, GitHub, etc.)'),
+  // Declared separately from `links` because each has a known icon and a known
+  // URL shape, so the UI can render them consistently instead of hoping the
+  // author typed a matching label.
+  orcid: z.string().optional().describe('ORCID iD or URL'),
+  scholar: z.string().url().optional().describe('Google Scholar profile URL'),
+  github: z.string().optional().describe('GitHub username or URL'),
+  homepage: z.string().url().optional().describe('Personal homepage'),
   interests: z.array(z.string()).optional().describe('Research interests'),
+  interests_en: z.array(z.string()).optional(),
 });
 
 /**
@@ -46,14 +95,31 @@ const peopleSchema = z.object({
  * Maps from: .content/Team-Guidebook/图书馆/项目/ (all .md files)
  */
 const projectsSchema = z.object({
-  ...baseSchema,
+  publish: baseSchema.publish,
+  tags: baseSchema.tags,
   id: z.string().describe('Unique identifier (slug)'),
   title: z.string().describe('Project title'),
+  title_en: z.string().optional(),
+  /**
+   * Card blurb.
+   *
+   * `Project.summary` was declared in the React DTO and rendered by HomePage,
+   * but no schema declared it and no page supplied it — a phantom field that
+   * was permanently undefined, so the card body was permanently blank.
+   */
+  summary: z.string().optional().describe('One-or-two-line blurb for the card'),
+  summary_en: z.string().optional(),
+  cover: z.string().optional().describe('Cover image path under /attachments'),
   start_date: z.union([z.date(), z.string()]).transform(val => typeof val === 'string' ? new Date(val) : val).describe('Project start date'),
   end_date: z.union([z.date(), z.string()]).optional().transform(val => val ? (typeof val === 'string' ? new Date(val) : val) : undefined).describe('Project end date (empty means "Present")'),
   people: z.array(z.string()).default([]).describe('Array of Person IDs (must match people collection)'),
+  research: z.array(z.string()).default([]).describe('Research theme ids this project belongs to'),
   repo: z.string().url().optional().describe('GitHub repository URL'),
   bib_key: z.string().optional().describe('BibTeX key for associated publication'),
+  // The home page used to show "featured" projects by taking the first three in
+  // collection order — i.e. whatever the filesystem happened to return.
+  featured: z.boolean().default(false).describe('Show on the home page'),
+  order: z.number().optional().describe('Sort key among featured projects'),
 });
 
 /**
@@ -80,7 +146,16 @@ const librarySchema = z.object({
   date: z.union([z.date(), z.string()]).optional().transform(val => val ? (typeof val === 'string' ? new Date(val) : val) : undefined).describe('Publication or creation date'),
   tags: z.union([z.array(z.string()), z.null()]).default([]).transform(val => val || []).describe('Tags for categorization'),
   title: z.string().optional().describe('Page title (defaults to filename)'),
-  lang: z.enum(['zh', 'en']).optional().describe('Language (inferred from path or frontmatter)'),
+  title_en: z.string().optional().describe('Page title in English, for the sidebar'),
+  // Base notes are Chinese; an English body goes in a `<name>.en.md` sibling,
+  // which the `translations` collection picks up. This field is therefore
+  // almost never needed by hand — it stays for notes authored directly in
+  // English, which obsidian-links.js already honours when resolving wiki links.
+  lang: z.enum(['zh', 'en']).optional().describe('Language of this note (defaults to zh)'),
+  // Read by LibraryPage for the index cards. Previously these survived only
+  // because of .passthrough(), so nothing caught a typo like `descriptio:`.
+  description: z.string().optional().describe('Card summary on the library index'),
+  excerpt: z.string().optional().describe('Fallback for description'),
 }).passthrough(); // Allow additional fields that don't match schema
 
 /**
@@ -166,16 +241,11 @@ const siteSchema = z.object({
 
 /**
  * Define all content collections.
- * 
- * Note: Content Collections will read from src/content/{collection}/ directories,
- * which are symlinked to .content/Team-Guidebook/ via setup-content.mjs.
- * 
- * For News collection: A custom loader is required to extract bullet items from Daily Notes.
- * This will be implemented in a separate loader file (see src/content/loaders/news.ts).
- * 
- * For Library collection: The symlink points to 图书馆/, but we need to exclude
- * 项目/ and 文献/ subdirectories. This is handled by filtering in the loader or
- * by using a more specific symlink structure.
+ *
+ * Most read from src/content/{collection}/, which scripts/setup-content.mjs
+ * symlinks into the Obsidian vault. `news` and `publications` bypass the
+ * symlinks and read the vault directly through custom loaders; `site` and
+ * `translations` glob the vault root, because they are not one directory.
  */
 export const collections = {
   site: defineCollection({
@@ -186,12 +256,35 @@ export const collections = {
     loader: glob({ pattern: 'site.md', base: findContentRoot() ?? './.content' }),
     schema: siteSchema,
   }),
+  /**
+   * English (and other non-base) bodies: `<name>.en.md` beside their base note.
+   *
+   * Globbed from the vault root so one collection covers every other one; ids
+   * are vault-relative paths (`通讯录/song-shuang.en`), which
+   * `translationIndex()` maps back onto base ids.
+   */
+  translations: defineCollection({
+    loader: glob({
+      pattern: CONTENT_LOCALES.map((locale) => `**/*.${locale}.md`),
+      base: findContentRoot() ?? './.content',
+      generateId: keepPathAsId,
+    }),
+    schema: translationSchema,
+  }),
   people: defineCollection({
-    loader: glob({ pattern: '**/*.md', base: './src/content/people', generateId: keepPathAsId }),
+    loader: glob({
+      pattern: ['**/*.md', ...TRANSLATION_GLOBS],
+      base: './src/content/people',
+      generateId: keepPathAsId,
+    }),
     schema: peopleSchema,
   }),
   projects: defineCollection({
-    loader: glob({ pattern: '**/*.md', base: './src/content/projects', generateId: keepPathAsId }),
+    loader: glob({
+      pattern: ['**/*.md', ...TRANSLATION_GLOBS],
+      base: './src/content/projects',
+      generateId: keepPathAsId,
+    }),
     schema: projectsSchema,
   }),
   news: defineCollection({
@@ -203,17 +296,11 @@ export const collections = {
     // Excluded here as well as in getLibraryEntries(), so a stray consumer
     // cannot resurface them.
     loader: glob({
-      pattern: ['**/*.md', ...OWNED_BY_OTHER_COLLECTIONS_GLOBS],
+      pattern: ['**/*.md', ...OWNED_BY_OTHER_COLLECTIONS_GLOBS, ...TRANSLATION_GLOBS],
       base: './src/content/library',
       generateId: keepPathAsId
     }),
     schema: librarySchema,
-    // Note: Library symlink points to 图书馆/, which includes 项目/ and 文献/
-    // We need to filter these out. This can be done via:
-    // 1. Custom loader that filters paths
-    // 2. More specific symlink structure (separate symlinks for each subdirectory)
-    // For now, we'll rely on the fact that 项目/ and 文献/ have their own collections
-    // and can be filtered at query time if needed.
   }),
   publications: defineCollection({
     loader: publicationsLoader(),

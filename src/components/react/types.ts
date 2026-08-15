@@ -1,7 +1,23 @@
+import type { Role } from '../../utils/roles';
+
+/**
+ * Props passed from .astro pages into the React islands.
+ *
+ * These are serialisation shapes, not the schema: dates arrive as ISO strings
+ * because that is what crosses the island boundary, and localised fields have
+ * already been resolved to one language by the page. Anything that should
+ * match content.config.ts is imported from there (see `Role`) rather than
+ * restated — restating is how `Project.summary` came to exist here, be
+ * rendered by HomePage, and be supplied by nothing.
+ */
 export interface Person {
   id: string;
   name: string;
-  role: string;
+  /** Canonical role, for grouping. The free-text job title is `title`. */
+  role: Role;
+  title?: string;
+  status?: 'current' | 'alumni';
+  destination?: string;
   avatar?: string;
   email?: string;
   interests?: string[];
@@ -12,13 +28,14 @@ export interface Person {
 export interface Project {
   id: string;
   title: string;
+  summary?: string;
+  cover?: string;
   start_date?: string;
   end_date?: string;
   people?: string[];
   tags?: string[];
   repo?: string;
   detailUrl?: string;
-  summary?: string;
 }
 
 export interface NewsItem {

@@ -4,20 +4,32 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { LOCALES, ui, type Lang } from '../../../i18n/ui';
 import { formatDay } from '../../../utils/formatDate';
 import { entrySlug } from '../../../utils/entrySlug';
+import { pickLocalized, translationIndex } from '../../../utils/localized';
+import { COLLECTION_VAULT_PATHS } from '../../../utils/contentLayout.js';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects', ({ data }) => data.publish !== false);
-  return LOCALES.flatMap((lang) =>
-    projects.map((project) => ({
+  const translations = await getCollection('translations', ({ data }) => data.publish !== false);
+
+  return LOCALES.flatMap((lang) => {
+    const overlays = translationIndex(translations, COLLECTION_VAULT_PATHS.projects, lang);
+    return projects.map((project) => ({
       params: { lang, slug: entrySlug(project) },
-      props: { project },
-    }))
-  );
+      props: { project, overlay: overlays.get(project.id) },
+    }));
+  });
 }
 
 const lang = Astro.params.lang as Lang;
-const { project } = Astro.props;
-const { Content } = await render(project);
+const { project, overlay } = Astro.props;
+
+// English body from a `<name>.en.md` sibling; the Chinese original with a
+// notice when there is none.
+const { Content } = await render(overlay ?? project);
+const isFallback = lang !== 'zh' && !overlay;
+
+const title = pickLocalized(project.data, 'title', lang) ?? project.data.title;
+const summary = pickLocalized(project.data, 'summary', lang);
 
 // Get all people for name lookup
 const allPeople = await getCollection('people', ({ data }) => data.publish !== false);
@@ -26,7 +38,7 @@ const allPeople = await getCollection('people', ({ data }) => data.publish !== f
 // whichever form the author used.
 const peopleMap = new Map(
   allPeople.flatMap((p) => {
-    const entry = { name: p.data.name, slug: entrySlug(p) };
+    const entry = { name: pickLocalized(p.data, 'name', lang) ?? p.data.name, slug: entrySlug(p) };
     return [p.data.id, p.id, entry.slug]
       .filter(Boolean)
       .map((key) => [key, entry] as const);
@@ -41,9 +53,10 @@ const endDate = project.data.end_date
   : null;
 ---
 
-<BaseLayout title={project.data.title} description={project.data.title} lang={lang}>
+<BaseLayout title={title} description={summary ?? title} lang={lang}>
   <article class="prose dark:prose-invert max-w-none">
-    <h1>{project.data.title}</h1>
+    <h1>{title}</h1>
+    {summary && <p class="lead">{summary}</p>}
     
     <div class="mt-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       <dl class="grid md:grid-cols-2 gap-4">
@@ -115,6 +128,14 @@ const endDate = project.data.end_date
       </dl>
     </div>
     
+    {
+      isFallback && (
+        <p class="not-prose mt-8 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
+          {ui.i18n.fallbackNotice[lang]}
+        </p>
+      )
+    }
+
     <div class="mt-8">
       <Content />
     </div>

@@ -105,6 +105,21 @@ export const ui = {
   person: {
     email: { zh: '邮箱：', en: 'Email: ' } satisfies Dict,
     links: { zh: '链接：', en: 'Links: ' } satisfies Dict,
-    interests: { zh: '研究兴趣：', en: 'Research Interests: ' } satisfies Dict
+    interests: { zh: '研究兴趣：', en: 'Research Interests: ' } satisfies Dict,
+    destination: { zh: '现任：', en: 'Now at: ' } satisfies Dict
+  },
+  i18n: {
+    /**
+     * Shown when a page falls back to the base language.
+     *
+     * Saying so is the point. `/zh` and `/en` used to serve byte-identical
+     * Chinese bodies with nothing to indicate it, so an English-speaking reader
+     * had no way to tell a missing translation from a page that simply had no
+     * more to say.
+     */
+    fallbackNotice: {
+      zh: '本页尚无其他语言版本，以下为中文原文。',
+      en: 'This page has not been translated yet; the original Chinese text follows.'
+    } satisfies Dict
   }
 } as const;

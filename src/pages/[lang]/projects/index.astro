@@ -2,6 +2,8 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { entrySlug } from '../../../utils/entrySlug';
+import { pickLocalized } from '../../../utils/localized';
+import { normalizeRole } from '../../../utils/roles';
 import { ProjectsPage } from '../../../components/react/pages/ProjectsPage';
 import { LOCALES, ui, type Lang } from '../../../i18n/ui';
 
@@ -14,10 +16,14 @@ const lang = Astro.params.lang as Lang;
 const allProjects = await getCollection('projects', ({ data }) => data.publish !== false);
 const allPeople = await getCollection('people', ({ data }) => data.publish !== false);
 
+// Keyed by entrySlug, not the raw collection id. The detail page keys by
+// entrySlug, so a person whose filename differs from their frontmatter `id`
+// resolved to a name on one page and to a raw id on the other. entrySlug is
+// the single source of truth for both.
 const people = allPeople.map((p) => ({
-  id: p.id,
-  name: p.data.name,
-  role: p.data.role,
+  id: entrySlug(p),
+  name: pickLocalized(p.data, 'name', lang) ?? p.data.name,
+  role: normalizeRole(p.data.role),
   avatar: p.data.avatar
 }));
 
@@ -29,7 +35,9 @@ const projects = allProjects
   })
   .map((project) => ({
     id: entrySlug(project),
-    title: project.data.title,
+    title: pickLocalized(project.data, 'title', lang) ?? project.data.title,
+    summary: pickLocalized(project.data, 'summary', lang),
+    cover: project.data.cover,
     start_date: project.data.start_date instanceof Date ? project.data.start_date.toISOString().slice(0, 10) : project.data.start_date,
     end_date: project.data.end_date instanceof Date ? project.data.end_date.toISOString().slice(0, 10) : project.data.end_date,
     people: project.data.people || [],
