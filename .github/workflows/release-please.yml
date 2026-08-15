@@ -38,17 +38,3 @@ jobs:
           manifest-file: .release-please-manifest.json
           # GitHub token (automatically provided by GitHub Actions)
           token: ${{ secrets.GITHUB_TOKEN }}
-
-  # Optional: Automatically merge the release PR when it's ready
-  # Uncomment the following job if you want auto-merge
-  # auto-merge:
-  #   needs: release-please
-  #   if: needs.release-please.outputs.release_created == 'true'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: peter-evans/enable-pull-request-automerge@v3
-  #       with:
-  #         token: ${{ secrets.GITHUB_TOKEN }}
-  #         pull-request-number: ${{ needs.release-please.outputs.pr }}
-
