@@ -1,10 +1,39 @@
 ---
+import { LOCALES, DEFAULT_LOCALE, ui, type Lang } from '../i18n/ui';
+import { getSiteConfig } from '../utils/siteConfig';
+
+const pathname = Astro.url?.pathname ?? '/';
+const first = pathname.split('/').filter(Boolean)[0];
+const lang: Lang = LOCALES.includes(first as Lang) ? (first as Lang) : DEFAULT_LOCALE;
+
+const site = await getSiteConfig(lang);
 const currentYear = new Date().getFullYear();
 ---
+
 <footer class="border-t border-gray-200 dark:border-gray-800 p-8 mt-8">
-  <div class="container mx-auto text-center text-gray-500">
-    <p>&copy; {currentYear} Lab Website. All rights reserved.</p>
+  <div class="container mx-auto text-center text-gray-500 space-y-3">
+    <p>&copy; {currentYear} {site.name}. {ui.shell.rightsReserved[lang]}</p>
+
+    {
+      site.footerNote && <p class="text-sm">{site.footerNote}</p>
+    }
+
+    {
+      site.socials.length > 0 && (
+        <ul class="flex items-center justify-center gap-4 text-sm">
+          {site.socials.map((social) => (
+            <li>
+              <a
+                href={social.url}
+                rel="me noopener"
+                class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {social.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
   </div>
 </footer>
-
-

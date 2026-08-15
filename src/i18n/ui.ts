@@ -17,6 +17,29 @@ export const DEFAULT_LOCALE: Lang = 'en';
 type Dict = Record<Lang, string>;
 
 export const ui = {
+  /**
+   * Header navigation labels.
+   *
+   * Only the labels live here. The hrefs stay in Header.astro, next to the
+   * routes they have to match — a label is a translation, a route is a fact
+   * about what got built, and mixing them is how a nav item outlives its page.
+   */
+  nav: {
+    home: { zh: '首页', en: 'Home' } satisfies Dict,
+    news: { zh: '动态', en: 'News' } satisfies Dict,
+    projects: { zh: '项目', en: 'Projects' } satisfies Dict,
+    library: { zh: '图书馆', en: 'Library' } satisfies Dict,
+    publications: { zh: '出版物', en: 'Publications' } satisfies Dict,
+    people: { zh: '团队', en: 'People' } satisfies Dict,
+    about: { zh: '关于', en: 'About' } satisfies Dict
+  },
+  /** Strings belonging to the page shell rather than to any one page. */
+  shell: {
+    mainNav: { zh: '主导航', en: 'Main navigation' } satisfies Dict,
+    search: { zh: '搜索', en: 'Search' } satisfies Dict,
+    skipToContent: { zh: '跳到主要内容', en: 'Skip to main content' } satisfies Dict,
+    rightsReserved: { zh: '保留所有权利。', en: 'All rights reserved.' } satisfies Dict
+  },
   home: {
     title: { zh: '实验室主页', en: 'Lab Home' } satisfies Dict,
     description: {

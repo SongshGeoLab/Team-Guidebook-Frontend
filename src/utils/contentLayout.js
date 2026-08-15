@@ -1,10 +1,71 @@
 /**
  * Facts about the vault layout that more than one place needs to agree on.
  *
- * Deliberately dependency-free: `astro.config.mjs` imports this at config-load
- * time, before Astro's `astro:content` virtual module exists, so this file must
- * not reach for it (that is why it does not live in libraryEntries.ts).
+ * Deliberately free of Astro imports: `astro.config.mjs` imports this at
+ * config-load time, before Astro's `astro:content` virtual module exists, so
+ * this file must not reach for it (that is why it does not live in
+ * libraryEntries.ts). Node builtins are fine — the config runs in Node.
  */
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+/** Top-level vault directories, by the collection each one feeds. */
+export const VAULT_DIRS = {
+  people: '通讯录',
+  news: '档案馆',
+  library: '图书馆',
+};
+
+/**
+ * Resolve the Obsidian vault root.
+ *
+ * `scripts/setup-content.mjs` can leave the vault in one of three shapes, so
+ * every consumer has to probe for all three. This was copy-pasted verbatim into
+ * both loaders (differing only in which directory it sniffed for), which is
+ * exactly the duplication this module exists to prevent — and it is the
+ * function that throws the error every new contributor hits first.
+ *
+ * @param {string} [sentinel] a directory that must exist directly under the
+ *   root, used to tell a bare `.content` apart from an unrelated folder.
+ *   Defaults to the library, which every vault has.
+ * @returns {string} absolute path to the vault root
+ */
+export function getContentRoot(sentinel = VAULT_DIRS.library) {
+  const root = findContentRoot(sentinel);
+  if (!root) throw new Error('Content root not found. Please run npm run setup:content');
+  return root;
+}
+
+/**
+ * As {@link getContentRoot}, but returns null instead of throwing.
+ *
+ * `src/content.config.ts` needs the vault path at *config-load* time to point a
+ * glob at a root-level file. Throwing there would turn "content not synced yet"
+ * — the normal state of a fresh clone — into a crash before Astro can print
+ * anything useful. A missing base makes the glob yield nothing instead, and the
+ * consumers fall back to their defaults.
+ *
+ * @param {string} [sentinel]
+ * @returns {string | null}
+ */
+export function findContentRoot(sentinel = VAULT_DIRS.library) {
+  const cwd = process.cwd();
+
+  // .content/Team-Guidebook (a clone that kept its repository directory)
+  const nested = path.join(cwd, '.content', 'Team-Guidebook');
+  if (fs.existsSync(nested)) return nested;
+
+  // .content IS the vault (a symlink straight at the vault, or a bare clone)
+  const dotContent = path.join(cwd, '.content');
+  if (fs.existsSync(path.join(dotContent, sentinel))) return dotContent;
+
+  // A vault checked out beside the site, without setup-content.mjs having run
+  const local = path.join(cwd, 'Team-Guidebook');
+  if (fs.existsSync(local)) return local;
+
+  return null;
+}
 
 /**
  * Subdirectories of 图书馆/ that have their own collection.

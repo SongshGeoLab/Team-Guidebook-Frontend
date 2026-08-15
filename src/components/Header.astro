@@ -1,11 +1,20 @@
 ---
-// Derive current locale from the pathname; default to zh.
+import { LOCALES, DEFAULT_LOCALE, ui, type Lang } from '../i18n/ui';
+import { getSiteConfig } from '../utils/siteConfig';
+
+// Derive the current locale from the pathname. Falls back to DEFAULT_LOCALE,
+// not a hardcoded 'zh': this used to default to zh while astro.config.mjs
+// redirected `/` to `/en/` and DEFAULT_LOCALE said 'en' — three answers to
+// "what is the default language".
 const pathname = Astro.url?.pathname ?? '/';
 const pathSegments = pathname.split('/').filter(Boolean);
-const currentLang = pathSegments[0] === 'en' ? 'en' : 'zh';
+const isLocale = (value?: string): value is Lang => LOCALES.includes(value as Lang);
+const currentLang: Lang = isLocale(pathSegments[0]) ? pathSegments[0] : DEFAULT_LOCALE;
 
-const withLang = (lang: 'zh' | 'en') => {
-  if (pathSegments[0] === 'en' || pathSegments[0] === 'zh') {
+const site = await getSiteConfig(currentLang);
+
+const withLang = (lang: Lang) => {
+  if (isLocale(pathSegments[0])) {
     const segments = [...pathSegments];
     segments[0] = lang;
     return `/${segments.join('/')}${pathname.endsWith('/') ? '/' : ''}`;
@@ -13,22 +22,26 @@ const withLang = (lang: 'zh' | 'en') => {
   return `/${lang}/`;
 };
 
-const nav = [
-  { label: currentLang === 'en' ? 'Home' : '首页', href: `/${currentLang}/` },
-  { label: currentLang === 'en' ? 'News' : '动态', href: `/${currentLang}/news/` },
-  { label: currentLang === 'en' ? 'Projects' : '项目', href: `/${currentLang}/projects/` },
-  { label: currentLang === 'en' ? 'Library' : '图书馆', href: `/${currentLang}/library/` },
-  { label: currentLang === 'en' ? 'Publications' : '出版物', href: `/${currentLang}/publications/` },
-  { label: currentLang === 'en' ? 'People' : '团队', href: `/${currentLang}/people/` },
-  { label: currentLang === 'en' ? 'About' : '关于', href: `/${currentLang}/about/` }
+// Routes are code (they have to match what getStaticPaths actually built);
+// labels are translations. site.md may override the whole list, but leaving it
+// unset is the safe default — see the `nav` field's note in content.config.ts.
+const defaultNav = [
+  { label: ui.nav.home[currentLang], href: `/${currentLang}/` },
+  { label: ui.nav.news[currentLang], href: `/${currentLang}/news/` },
+  { label: ui.nav.projects[currentLang], href: `/${currentLang}/projects/` },
+  { label: ui.nav.library[currentLang], href: `/${currentLang}/library/` },
+  { label: ui.nav.publications[currentLang], href: `/${currentLang}/publications/` },
+  { label: ui.nav.people[currentLang], href: `/${currentLang}/people/` },
+  { label: ui.nav.about[currentLang], href: `/${currentLang}/about/` }
 ];
+const nav = site.nav ?? defaultNav;
 ---
 
 <header class="border-b border-gray-200 dark:border-gray-800">
   <div class="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
     <div class="text-lg font-semibold">
       <a href={`/${currentLang}/`} class="hover:opacity-80 transition-opacity">
-        {currentLang === 'en' ? 'Our Lab' : '实验室'}
+        {site.name}
       </a>
     </div>
 
@@ -40,7 +53,7 @@ const nav = [
     <nav
       class="flex items-center gap-6 text-sm font-medium overflow-x-auto whitespace-nowrap
              [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      aria-label={currentLang === 'en' ? 'Main navigation' : '主导航'}
+      aria-label={ui.shell.mainNav[currentLang]}
     >
       {nav.map((item) => (
         <a
@@ -56,8 +69,8 @@ const nav = [
       <a
         href={`/${currentLang}/search/`}
         class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-        aria-label={currentLang === 'en' ? 'Search' : '搜索'}
-        title={currentLang === 'en' ? 'Search' : '搜索'}
+        aria-label={ui.shell.search[currentLang]}
+        title={ui.shell.search[currentLang]}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

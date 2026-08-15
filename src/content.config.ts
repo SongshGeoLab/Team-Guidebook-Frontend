@@ -1,6 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
-import { OWNED_BY_OTHER_COLLECTIONS_GLOBS } from './utils/contentLayout.js';
+import { OWNED_BY_OTHER_COLLECTIONS_GLOBS, findContentRoot } from './utils/contentLayout.js';
 import { newsLoader } from './content/loaders/newsLoader';
 import { publicationsLoader } from './content/loaders/publicationsLoader';
 
@@ -103,6 +103,68 @@ const publicationsSchema = z.object({
 });
 
 /**
+ * Site identity, navigation and social links.
+ * Maps from: <vault root>/site.md — a single entry, id `site`.
+ *
+ * Before this the site had three different identities hardcoded in three
+ * components: Header.astro said "Our Lab" / "实验室", Footer.astro said
+ * "Lab Website", and HomePage.tsx said "SongshGeo Lab" with an institute name
+ * and hero copy. Nothing reconciled them, and a content maintainer could not
+ * change any of them without a code change and a redeploy.
+ *
+ * The body of site.md is the About page lead, which is why this is a markdown
+ * file rather than YAML — it needs `render()`, and an Obsidian author can open
+ * and preview it like any other note.
+ */
+const siteSchema = z.object({
+  name: z.string().describe('Lab name, in the primary (Chinese) language'),
+  name_en: z.string().optional().describe('Lab name in English'),
+  tagline: z.string().optional().describe('One-line description'),
+  tagline_en: z.string().optional(),
+  // The hero renders the headline over two lines, the second in the accent
+  // gradient. Kept as two fields because that is what the layout needs; a
+  // single string would have to be split on a marker somewhere.
+  headline: z.string().optional().describe('First line of the hero headline'),
+  headline_en: z.string().optional(),
+  headline_accent: z.string().optional().describe('Second, highlighted hero line'),
+  headline_accent_en: z.string().optional(),
+  affiliation: z.string().optional().describe('Institute or university'),
+  affiliation_en: z.string().optional(),
+  logo: z.string().optional().describe('Path under /attachments'),
+  email: z.string().email().optional(),
+  address: z.string().optional(),
+  address_en: z.string().optional(),
+  socials: z
+    .array(
+      z.object({
+        label: z.string(),
+        url: z.string().url(),
+        icon: z.string().optional().describe('lucide-react icon name'),
+      })
+    )
+    .default([]),
+  /**
+   * Optional nav override.
+   *
+   * Left optional on purpose: nav entries point at routes, and routes are code.
+   * A content author who adds an item here for a page that does not exist ships
+   * a 404 with no build error. When absent, Header.astro uses the route list it
+   * can actually verify, with labels from src/i18n/ui.ts.
+   */
+  nav: z
+    .array(
+      z.object({
+        href: z.string(),
+        label: z.string(),
+        label_en: z.string().optional(),
+      })
+    )
+    .optional(),
+  footer_note: z.string().optional(),
+  footer_note_en: z.string().optional(),
+});
+
+/**
  * Define all content collections.
  * 
  * Note: Content Collections will read from src/content/{collection}/ directories,
@@ -116,6 +178,14 @@ const publicationsSchema = z.object({
  * by using a more specific symlink structure.
  */
 export const collections = {
+  site: defineCollection({
+    // Globbed straight from the vault root rather than through a symlink under
+    // src/content/: setup-content.mjs links directories, and this is one file.
+    // A null root (fresh clone, content not synced) yields no entries and the
+    // consumers fall back to their defaults — see findContentRoot.
+    loader: glob({ pattern: 'site.md', base: findContentRoot() ?? './.content' }),
+    schema: siteSchema,
+  }),
   people: defineCollection({
     loader: glob({ pattern: '**/*.md', base: './src/content/people', generateId: keepPathAsId }),
     schema: peopleSchema,

@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { HomePage } from '../../components/react/pages/HomePage';
 import { entrySlug } from '../../utils/entrySlug';
+import { getSiteConfig } from '../../utils/siteConfig';
 import { LOCALES, ui, type Lang } from '../../i18n/ui';
 
 export function getStaticPaths() {
@@ -10,6 +11,8 @@ export function getStaticPaths() {
 }
 
 const lang = Astro.params.lang as Lang;
+
+const site = await getSiteConfig(lang);
 
 const allNews = await getCollection('news', ({ data }) => data.publish !== false);
 const newsItems = allNews
@@ -43,5 +46,5 @@ const featuredProjects = allProjects.slice(0, 3).map((project) => ({
 ---
 
 <BaseLayout title={ui.home.title[lang]} description={ui.home.description[lang]} lang={lang}>
-  <HomePage client:load lang={lang} news={newsItems} projects={featuredProjects} />
+  <HomePage client:load lang={lang} news={newsItems} projects={featuredProjects} site={site} />
 </BaseLayout>

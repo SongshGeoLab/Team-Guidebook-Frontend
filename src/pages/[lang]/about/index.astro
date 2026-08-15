@@ -1,5 +1,7 @@
 ---
+import { getEntry, render } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getSiteConfig } from '../../../utils/siteConfig';
 import { LOCALES, ui, type Lang } from '../../../i18n/ui';
 
 export function getStaticPaths() {
@@ -7,12 +9,42 @@ export function getStaticPaths() {
 }
 
 const lang = Astro.params.lang as Lang;
+const site = await getSiteConfig(lang);
+
+// The body of the vault's site.md is the About copy. This page used to be a
+// hardcoded placeholder that said the content was "to be configured later" —
+// which no content maintainer could ever configure, because it was in code.
+const siteEntry = await getEntry('site', 'site');
+const Body = siteEntry ? (await render(siteEntry)).Content : undefined;
 ---
 
-<BaseLayout title={ui.about.title[lang]} description={ui.about.description[lang]} lang={lang}>
+<BaseLayout title={ui.about.title[lang]} description={site.tagline ?? ui.about.description[lang]} lang={lang}>
   <div class="prose dark:prose-invert max-w-none">
-    <h1>{ui.about.heading[lang]}</h1>
-    <p class="lead">{ui.about.lead[lang]}</p>
-    <p class="text-sm text-gray-500 dark:text-gray-400">{ui.about.note[lang]}</p>
+    <h1>{site.name}</h1>
+    {site.tagline && <p class="lead">{site.tagline}</p>}
+
+    {
+      Body ? (
+        <Body />
+      ) : (
+        <p class="text-sm text-gray-500 dark:text-gray-400">{ui.about.note[lang]}</p>
+      )
+    }
+
+    {
+      (site.email || site.address) && (
+        <dl class="not-prose mt-8 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+          {site.affiliation && <dd>{site.affiliation}</dd>}
+          {site.address && <dd>{site.address}</dd>}
+          {site.email && (
+            <dd>
+              <a href={`mailto:${site.email}`} class="hover:underline">
+                {site.email}
+              </a>
+            </dd>
+          )}
+        </dl>
+      )
+    }
   </div>
 </BaseLayout>

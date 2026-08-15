@@ -4,6 +4,7 @@ import path from 'node:path';
 import fg from 'fast-glob';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
+import { getContentRoot, VAULT_DIRS } from '../../utils/contentLayout.js';
 
 // Use createRequire to load CommonJS modules robustly in all environments
 const require = createRequire(import.meta.url);
@@ -27,30 +28,6 @@ interface PublicationItem {
 
 /** Zotero writes these into `keywords`; they are not research topics. */
 const LANGUAGE_KEYWORDS = new Set(['english', 'chinese', '中文', '英文']);
-
-// Helper to resolve the content root (same as newsLoader)
-function getContentRoot() {
-  const cwd = process.cwd();
-  // Check .content/Team-Guidebook
-  const contentInDotContent = path.join(cwd, '.content', 'Team-Guidebook');
-  if (fs.existsSync(contentInDotContent)) {
-    return contentInDotContent;
-  }
-  // Check .content directly (if it is Team-Guidebook)
-  const dotContent = path.join(cwd, '.content');
-  if (fs.existsSync(dotContent)) {
-    // Check if it looks like Team-Guidebook (has 图书馆, etc)
-    if (fs.existsSync(path.join(dotContent, '图书馆'))) {
-      return dotContent;
-    }
-  }
-  // Fallback to local Team-Guidebook
-  const local = path.join(cwd, 'Team-Guidebook');
-  if (fs.existsSync(local)) {
-    return local;
-  }
-  throw new Error('Content root not found. Please run npm run setup:content');
-}
 
 /**
  * Extract individual BibTeX entries from a BibTeX file.
@@ -241,7 +218,7 @@ export function publicationsLoader(): Loader {
   return {
     name: 'publications-loader',
     load: async (context: LoaderContext) => {
-      const contentRoot = getContentRoot();
+      const contentRoot = getContentRoot(VAULT_DIRS.library);
 
       const loadAll = async () => {
       // Same reasoning as newsLoader: full rebuild each run, so clear first.
@@ -251,8 +228,8 @@ export function publicationsLoader(): Loader {
 
       
       // Try 图书馆/文献/ first, then fallback to 图书馆/ root
-      const publicationsDir = path.join(contentRoot, '图书馆', '文献');
-      const libraryRoot = path.join(contentRoot, '图书馆');
+      const publicationsDir = path.join(contentRoot, VAULT_DIRS.library, '文献');
+      const libraryRoot = path.join(contentRoot, VAULT_DIRS.library);
       
       let searchDir = publicationsDir;
       let bibFiles: string[] = [];
@@ -393,7 +370,7 @@ export function publicationsLoader(): Loader {
       // fixture daily note with the server up leaves the page unchanged.
       // The hook is kept because the loader is now re-entrant, which is the
       // prerequisite for fixing this properly.
-      const bibRoot = path.join(contentRoot, '图书馆');
+      const bibRoot = path.join(contentRoot, VAULT_DIRS.library);
       context.watcher?.add(bibRoot);
       for (const event of ['change', 'add', 'unlink'] as const) {
         context.watcher?.on(event, (changedPath: string) => {

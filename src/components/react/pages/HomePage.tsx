@@ -1,4 +1,5 @@
 import type { NewsItem, Project } from '../types';
+import type { ResolvedSite } from '../../../utils/siteConfig';
 import { GlassCard } from '../ui/GlassCard';
 import { ui } from '../../../i18n/ui';
 import { NewsTimeline } from '../ui/NewsTimeline';
@@ -9,30 +10,23 @@ interface HomePageProps {
   lang: 'zh' | 'en';
   news: NewsItem[];
   projects: Project[];
+  /**
+   * Lab identity, from the vault's site.md.
+   *
+   * The lab name, institute and hero copy used to be hardcoded here, giving the
+   * site a third identity that disagreed with the two in Header and Footer, and
+   * that no content maintainer could change without a code change.
+   */
+  site: ResolvedSite;
 }
 
 const TEXT = {
-  // The hero renders the title over two lines, the second one in the gradient
-  // accent. Keep the halves here rather than inlining one of them in the JSX —
-  // that is how the two ended up duplicating each other.
-  titleLead: {
-    zh: '进化的',
-    en: 'Evolutionary'
-  },
-  titleAccent: {
-    zh: '人与水系统',
-    en: 'Human-Water System'
-  },
-  heroLead: {
-    zh: '通过水的视角探索人类社会与自然环境的共演',
-    en: 'Exploring the co-evolution between human society and nature through water.'
-  },
   featured: { zh: '精选项目', en: 'Featured Projects' },
   news: { zh: '实验室动态', en: 'Lab News' },
   viewAll: { zh: '查看全部', en: 'View All' }
 };
 
-export function HomePage({ lang, news, projects }: HomePageProps) {
+export function HomePage({ lang, news, projects, site }: HomePageProps) {
   const topNews = news.slice(0, 5);
   const featured = projects.slice(0, 3);
 
@@ -47,24 +41,34 @@ export function HomePage({ lang, news, projects }: HomePageProps) {
         >
           <div className="flex gap-2">
             <span className="px-3 py-1 rounded-full border border-teal-500/30 bg-teal-950/20 text-teal-300 text-xs tracking-wider uppercase">
-              SongshGeo Lab
+              {site.name}
             </span>
-            <span className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-gray-400 text-xs tracking-wider uppercase">
-              Max Planck Institute of Geoanthropology
-            </span>
+            {site.affiliation && (
+              <span className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-gray-400 text-xs tracking-wider uppercase">
+                {site.affiliation}
+              </span>
+            )}
           </div>
 
+          {/* Falls back to the lab name when site.md declares no headline, so
+              the hero is never an empty block. */}
           <h1 className="text-5xl md:text-7xl font-light tracking-tight text-white leading-[1.1] drop-shadow-lg">
-            {TEXT.titleLead[lang]}
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-200 to-blue-400 font-normal">
-              {TEXT.titleAccent[lang]}
-            </span>
+            {site.headline ?? site.name}
+            {site.headlineAccent && (
+              <>
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-200 to-blue-400 font-normal">
+                  {site.headlineAccent}
+                </span>
+              </>
+            )}
           </h1>
 
-          <p className="text-xl text-gray-300 max-w-xl font-light leading-relaxed border-l-2 border-teal-500/50 pl-6">
-            {TEXT.heroLead[lang]}
-          </p>
+          {site.tagline && (
+            <p className="text-xl text-gray-300 max-w-xl font-light leading-relaxed border-l-2 border-teal-500/50 pl-6">
+              {site.tagline}
+            </p>
+          )}
 
           <div className="flex gap-4 pt-4">
             <a

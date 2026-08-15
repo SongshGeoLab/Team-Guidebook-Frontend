@@ -6,6 +6,7 @@ import { entrySlug } from '../../utils/entrySlug';
 import { parseCalendarDate } from '../../utils/formatDate';
 import fg from 'fast-glob';
 import { renderMarkdown } from '../../utils/render-markdown.js';
+import { getContentRoot, VAULT_DIRS } from '../../utils/contentLayout.js';
 
 // Define the shape of the news item
 // Must match the schema in config.ts (minus the Zod transformation, or pre-transformation)
@@ -19,33 +20,9 @@ interface NewsItem {
   publish: boolean;
 }
 
-// Helper to resolve the content root
-function getContentRoot() {
-  const cwd = process.cwd();
-  // Check .content/Team-Guidebook
-  const contentInDotContent = path.join(cwd, '.content', 'Team-Guidebook');
-  if (fs.existsSync(contentInDotContent)) {
-    return contentInDotContent;
-  }
-  // Check .content directly (if it is Team-Guidebook)
-  const dotContent = path.join(cwd, '.content');
-  if (fs.existsSync(dotContent)) {
-    // Check if it looks like Team-Guidebook (has 档案馆, etc)
-    if (fs.existsSync(path.join(dotContent, '档案馆'))) {
-      return dotContent;
-    }
-  }
-  // Fallback to local Team-Guidebook
-  const local = path.join(cwd, 'Team-Guidebook');
-  if (fs.existsSync(local)) {
-    return local;
-  }
-  throw new Error('Content root not found. Please run npm run setup:content');
-}
-
 // Helper to load people aliases -> id map
 function loadPeopleMap(contentRoot: string): Record<string, string> {
-  const peopleDir = path.join(contentRoot, '通讯录');
+  const peopleDir = path.join(contentRoot, VAULT_DIRS.people);
   if (!fs.existsSync(peopleDir)) return {};
 
   const files = fg.globSync('*.md', { cwd: peopleDir });
@@ -74,8 +51,8 @@ export function newsLoader(): Loader {
   return {
     name: 'news-loader',
     load: async (context: LoaderContext) => {
-      const contentRoot = getContentRoot();
-      const newsDir = path.join(contentRoot, '档案馆');
+      const contentRoot = getContentRoot(VAULT_DIRS.news);
+      const newsDir = path.join(contentRoot, VAULT_DIRS.news);
 
       const loadAll = async () => {
       // Astro persists the store across runs (.astro/ and node_modules/.astro).
@@ -181,7 +158,7 @@ export function newsLoader(): Loader {
             // Typed against NewsItem so the payload cannot drift from the
             // schema in content.config.ts unnoticed — store.set() takes
             // `Record<string, unknown>` and would swallow a renamed field.
-            const data: Omit<NewsItem, 'id'> = {
+            const newsData: Omit<NewsItem, 'id'> = {
               date,
               title,
               content: html,
@@ -195,7 +172,7 @@ export function newsLoader(): Loader {
               // Recorded for change detection by consumers; note this loader
               // clears the store each run, so it cannot skip work by itself.
               digest: context.generateDigest?.(JSON.stringify({ bulletContent, date, file })),
-              data
+              data: newsData
             });
           }
         }
