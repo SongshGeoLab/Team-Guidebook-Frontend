@@ -236,6 +236,14 @@ export default function RippleBackground({ imageUrl = '/background.jpg' }: { ima
           // distortion shader writes an opaque pixel (gl_FragColor = color,
           // alpha 1 from the texture), so nothing composites differently once
           // there is something to composite.
+          //
+          // NOT done here, deliberately: fading the canvas in on first frame.
+          // The handover from static image to canvas is still a hard cut, and
+          // visible, because the shader renders the same photograph about 13%
+          // darker (measured: luma 46 static, 40 through the canvas). A fade
+          // would only cross-dissolve between two brightnesses that should
+          // match in the first place — tracked separately rather than papered
+          // over here.
           alpha: true,
           depth: false,
           stencil: false,

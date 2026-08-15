@@ -10,11 +10,22 @@ These need a dev server already up, and they drive **your installed Chrome**
 `npx playwright install` step:
 
 ```bash
-CONTENT_DIR=fixtures/Team-Guidebook npm run dev   # in one terminal
+CONTENT_DIR=fixtures/Team-Guidebook npm run dev   # in one terminal, serves :4321
 npm run test:e2e                                  # in another
 ```
 
-Override the target with `BASE=http://localhost:4321 npm run test:e2e`.
+Astro takes the next free port if 4321 is busy, so pass `BASE` when it does:
+`BASE=http://localhost:4323 npm run test:e2e`.
+
+The dev server is the convenient target, not the authoritative one. Before
+trusting a green run on anything release-shaped, point it at the built site —
+that is the artifact readers get, and `.cursor/rules/Astro.mdc` asks for e2e
+against the build:
+
+```bash
+CONTENT_DIR=fixtures/Team-Guidebook npm run build && npm run preview
+BASE=http://localhost:4321 npm run test:e2e
+```
 
 ## Not in CI, deliberately
 
@@ -30,10 +41,8 @@ harnesses are written to be self-explanatory about what they assert and why.
 Asserts that once a page's static backdrop image has loaded, the backdrop never
 goes black again.
 
-The bug it locks down: `RippleBackground`'s canvas was created with
-`alpha: false`, making it opaque, so it cleared to **black** over the static
-backdrop for the ~240ms its texture took to load — a visible flash on every
-navigation.
+The bug it locks down, and why, is written where the fix lives — see the
+comment on `gl={{ alpha }}` in `src/components/react/RippleBackground.tsx`.
 
 **If you change this file, validate it both ways.** It must go red with
 `alpha: false` in `src/components/react/RippleBackground.tsx` and green with
