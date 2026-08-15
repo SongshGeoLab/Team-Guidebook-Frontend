@@ -139,18 +139,18 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
       uMouse: { value: [-100, -100] },
       uResolution: { value: [simRes, simRes] },
       uRadius: { value: 0.03 },
-      uViscosity: { value: 0.98 }
+      uViscosity: { value: 0.98 },
     }),
-    [simRes]
+    [simRes],
   );
 
   const distUniforms = useMemo(
     () => ({
       uTexture: { value: bgTexture },
       uDisplacement: { value: null as Texture | null },
-      uTime: { value: 0 }
+      uTime: { value: 0 },
     }),
-    [bgTexture]
+    [bgTexture],
   );
 
   useFrame((state) => {
@@ -189,7 +189,7 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
             fragmentShader={simulationFragmentShader}
           />
         </mesh>,
-        simScene
+        simScene,
       )}
 
       <mesh>
@@ -221,9 +221,24 @@ export default function RippleBackground({ imageUrl = '/background.jpg' }: { ima
         camera={{ position: [0, 0, 1] }}
         gl={{
           antialias: false,
-          alpha: false,
+          // alpha: true, NOT false — this one flag is the difference between a
+          // clean handover and a ~240ms black flash on every navigation.
+          //
+          // An opaque canvas is cleared to opaque BLACK before anything is
+          // drawn, and `useTexture` below suspends while /background.jpg loads
+          // and decodes. For that whole window the canvas sat at -z-20 painting
+          // black over BaseLayout's static backdrop at -z-30 — measured at four
+          // consecutive samples of luma 12.7 between two lit frames, and absent
+          // whenever the island did not mount.
+          //
+          // Transparent, the canvas shows the static image through until the
+          // first frame draws. Appearance afterwards is unchanged: the
+          // distortion shader writes an opaque pixel (gl_FragColor = color,
+          // alpha 1 from the texture), so nothing composites differently once
+          // there is something to composite.
+          alpha: true,
           depth: false,
-          stencil: false
+          stencil: false,
         }}
       >
         <InnerScene bgUrl={imageUrl} />
@@ -231,5 +246,3 @@ export default function RippleBackground({ imageUrl = '/background.jpg' }: { ima
     </div>
   );
 }
-
-

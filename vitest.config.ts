@@ -13,6 +13,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
+    // test/e2e/ drives a real browser against a running dev server; it is not
+    // part of `npm test`. See test/e2e/README.md.
+    exclude: ['test/e2e/**'],
     environment: 'node',
     // The vault fixtures are read from disk by some tests; keep the repo root
     // as cwd so relative paths match what the loaders see at build time.
