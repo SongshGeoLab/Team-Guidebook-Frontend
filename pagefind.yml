@@ -1,0 +1,13 @@
+# Pagefind runs as a postbuild step over dist/.
+#
+# The important indexing decision is NOT here: `data-pagefind-body` on <main>
+# in src/layouts/BaseLayout.astro is what confines the index to page content.
+# `root_selector` was tried in this file and Pagefind ignored it, reporting
+# "Did not find a data-pagefind-body element ... Indexing all <body> elements".
+#
+# Pagefind reads <html lang> and shards the index per language on its own, so a
+# search from /zh/ already returns Chinese pages; no per-locale config needed.
+site: dist
+
+exclude_selectors:
+  - '[data-pagefind-ignore]'

@@ -3,7 +3,7 @@ import '../styles/global.css';
 import Header from '../components/Header.astro';
 import RippleBackground from '../components/react/RippleBackground.tsx';
 import Footer from '../components/Footer.astro';
-import { LOCALES, DEFAULT_LOCALE } from '../i18n/ui';
+import { LOCALES, DEFAULT_LOCALE, ui, type Lang } from '../i18n/ui';
 
 interface Props {
   title: string;
@@ -17,14 +17,20 @@ interface Props {
   noIndex?: boolean;
 }
 
-const { title, description = "Lab Website", lang = "zh", noIndex = false } = Astro.props;
+const { title, description = 'Lab Website', lang: rawLang = 'zh', noIndex = false } = Astro.props;
+
+// Narrow to Lang once, here. `lang` arrives as a plain string because .astro
+// props are loosely typed at the boundary, but everything downstream indexes
+// the ui dictionary with it.
+const lang: Lang = LOCALES.includes(rawLang as Lang) ? (rawLang as Lang) : DEFAULT_LOCALE;
 
 // LOCALES / DEFAULT_LOCALE come from the i18n module so the locale set has one
 // definition; redeclaring them here is how the two drift apart.
 
-// `/zh/library/x` and `/en/library/x` are the same document in two locales.
-// Without canonical + hreflang, search engines see pure duplicate content —
-// the two trees currently render identical text (see issue #11).
+// `/zh/library/x` and `/en/library/x` are the same document in two locales,
+// so they need canonical + hreflang. Bodies now genuinely differ wherever a
+// `.en.md` overlay exists, and fall back to the Chinese with a notice where
+// one does not — so these tags describe translations, not duplicate content.
 const currentPath = Astro.url.pathname;
 const pathWithoutLocale = currentPath.replace(/^\/(zh|en)(?=\/|$)/, '') || '/';
 const localeUrl = (locale: string) =>
@@ -77,14 +83,67 @@ const alternates = Astro.site && !noIndex
   -->
   <body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-white min-h-screen flex flex-col overflow-x-hidden">
     <!--
-      Decorative only, and the heaviest bundle in the tree (three + fiber + drei).
-      client:load blocked on it during initial hydration on all 29 pages; it has
-      nothing to do with interactivity, so let it wait for an idle moment.
+      Static backdrop, rendered on the server on every page. It is what a
+      reader sees when the WebGL island never mounts — reduced motion, no
+      WebGL, or JS off — and it is behind the canvas otherwise, so there is no
+      flash of black before the texture loads.
     -->
-    <RippleBackground client:idle />
+    <div class="fixed inset-0 -z-30 bg-black" aria-hidden="true">
+      <img
+        src="/background.jpg"
+        alt=""
+        class="h-full w-full object-cover"
+        fetchpriority="low"
+        decoding="async"
+      />
+      <div class="absolute inset-0 bg-gradient-to-b from-[#08152dcc] via-[#050b14cc] to-[#02040acc]"></div>
+    </div>
+
+    <!--
+      Decorative only, and by far the heaviest bundle in the tree: three +
+      fiber + drei build an 888 KB chunk (228 KB gzipped), about two thirds of
+      all the JS this site ships, on every page.
+
+      client:media, not client:idle. client:idle took it off the hydration
+      critical path but NOT out of the download — a reader who has asked for
+      reduced motion still fetched all of it, initialised a WebGL context and
+      allocated two framebuffers, only for the component to freeze its own
+      animation from the inside. Gating at the mount boundary means the chunk
+      is never requested at all, which is the request such a reader is
+      actually making, and which is most valuable on exactly the low-power
+      devices where that preference tends to be set.
+
+      The component keeps its own prefers-reduced-motion listener: this gate is
+      evaluated once at mount, so a reader who changes the setting mid-session
+      still needs the in-component check to stop the animation.
+    -->
+    <RippleBackground client:media="(prefers-reduced-motion: no-preference)" />
+    <!--
+      Skip link. The header carries nine nav items plus a search icon and two
+      language toggles, so a keyboard or screen-reader user otherwise tabs
+      through twelve controls on every single page before reaching the content.
+      Visually hidden until focused.
+    -->
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-slate-900 focus:outline-2 focus:outline-offset-2 focus:outline-teal-500"
+    >
+      {ui.shell.skipToContent[lang]}
+    </a>
+
     <div class="relative z-10 flex flex-col min-h-screen">
       <Header />
-      <main class="flex-grow container mx-auto px-4 py-8">
+      <!--
+        data-pagefind-body confines the search index to page content. Without
+        it Pagefind indexed the whole <body>, so the nine nav labels, the
+        footer and the language switcher were in every record and a search for
+        "Library" matched all 36 pages instead of the library.
+
+        The equivalent `root_selector` in pagefind.yml is NOT a substitute —
+        it was tried, and Pagefind still reported "Did not find a
+        data-pagefind-body element ... Indexing all <body> elements".
+      -->
+      <main id="main" data-pagefind-body class="flex-grow container mx-auto px-4 py-8">
         <slot />
       </main>
       <Footer />

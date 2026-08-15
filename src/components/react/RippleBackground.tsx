@@ -207,7 +207,11 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
 
 export default function RippleBackground({ imageUrl = '/background.jpg' }: { imageUrl?: string }) {
   return (
-    <div className="fixed inset-0 -z-20 bg-black">
+    // aria-hidden: purely decorative, and the canvas has no accessible content
+    // to announce. Sits at -z-20, above BaseLayout's static -z-30 backdrop, so
+    // the static image shows through until this mounts rather than flashing
+    // black.
+    <div className="fixed inset-0 -z-20 bg-black" aria-hidden="true">
       <Canvas
         dpr={[1, 2]}
         camera={{ position: [0, 0, 1] }}
