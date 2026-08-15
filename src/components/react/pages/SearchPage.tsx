@@ -246,6 +246,11 @@ export function SearchPage({ lang }: SearchPageProps) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={TEXT.placeholder[lang]}
             className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-full pl-12 pr-6 py-4 text-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500/50 transition-all"
+            /* This is a dedicated /search route reached by clicking the
+               magnifier; typing is its only purpose, so autofocus saves every
+               user a second click rather than stealing focus from surrounding
+               content. The rule's own docs name this as the exception. */
+            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
           {isLoading && (

@@ -120,11 +120,18 @@ function createProcessor(options = {}) {
 /**
  * Render Markdown to sanitised HTML.
  *
+ * `options` exists so tests can supply a hand-built content index instead of
+ * globbing `src/content/library` off disk — the shared processor is cached
+ * precisely because that glob is expensive, and a test must not depend on the
+ * vault symlinks being wired up. Production callers pass nothing.
+ *
  * @param {string} markdown
+ * @param {object} [options]
+ * @param {ReturnType<typeof buildContentIndex>} [options.index]
  * @returns {Promise<string>}
  */
-export async function renderMarkdown(markdown) {
-  sharedProcessor ??= createProcessor();
-  const result = await sharedProcessor.process(markdown);
+export async function renderMarkdown(markdown, options) {
+  const processor = options?.index ? createProcessor(options) : (sharedProcessor ??= createProcessor());
+  const result = await processor.process(markdown);
   return String(result).trim();
 }

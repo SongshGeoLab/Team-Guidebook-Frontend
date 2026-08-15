@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   check:
-    name: Type-check and build
+    name: Lint, test, type-check and build
     runs-on: ubuntu-latest
     env:
       # Build against the committed fixtures rather than the private content
@@ -28,6 +28,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # Lint and unit tests run before the content is wired up: neither needs
+      # the vault, and both fail in seconds, so a formatting or logic error does
+      # not wait behind a full Astro build to be reported.
+      - run: npm run lint
+      - run: npm test
 
       # `astro check` needs the generated collection types, which `astro sync`
       # produces; the prebuild hook wires the fixtures into src/content/ first.

@@ -56,8 +56,11 @@ function getContentRoot() {
  * Extract individual BibTeX entries from a BibTeX file.
  * Returns a map of citation key -> BibTeX string.
  * Handles multi-line entries and nested braces.
+ *
+ * Exported for testing: this is a hand-rolled scanner, and the bugs it has had
+ * (silently corrupting entries) were only ever caught by eye on the built site.
  */
-function extractBibEntries(bibContent: string): Record<string, string> {
+export function extractBibEntries(bibContent: string): Record<string, string> {
   const entries: Record<string, string> = {};
   
   // Match BibTeX entries: @type{key, ...}
@@ -115,8 +118,12 @@ function extractBibEntries(bibContent: string): Record<string, string> {
  * @param entry - Citation-js entry object
  * @param bibKey - BibTeX citation key
  * @param originalBibtex - Original BibTeX string for this entry (optional)
+ *
+ * Exported for testing. Every field mapping below encodes a bug that reached
+ * production once (`keyword` vs `keywords`, local `file=` paths, the missing
+ * year falling back to "now"); the tests pin each one.
  */
-function parseBibEntry(
+export function parseBibEntry(
   entry: any,
   bibKey: string,
   originalBibtex?: string,

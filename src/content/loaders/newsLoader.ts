@@ -178,19 +178,24 @@ export function newsLoader(): Loader {
               ? date.toISOString().split('T')[0]
               : path.basename(file, '.md');
 
+            // Typed against NewsItem so the payload cannot drift from the
+            // schema in content.config.ts unnoticed — store.set() takes
+            // `Record<string, unknown>` and would swallow a renamed field.
+            const data: Omit<NewsItem, 'id'> = {
+              date,
+              title,
+              content: html,
+              related_people: [...new Set(relatedPeople)], // Deduplicate
+              tags: [...new Set(tags)],
+              publish: true
+            };
+
             context.store.set({
               id,
               // Recorded for change detection by consumers; note this loader
               // clears the store each run, so it cannot skip work by itself.
               digest: context.generateDigest?.(JSON.stringify({ bulletContent, date, file })),
-              data: {
-                date,
-                title,
-                content: html,
-                related_people: [...new Set(relatedPeople)], // Deduplicate
-                tags: [...new Set(tags)],
-                publish: true
-              }
+              data
             });
           }
         }

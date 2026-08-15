@@ -32,10 +32,13 @@ const news = allNews
     content: item.data.content || '',
     tags: item.data.tags || [],
     related_people: item.data.related_people || [],
-    relatedPeople: (item.data.related_people || [])
-      .map((id: string) => peopleById.get(id))
-      .filter(Boolean)
-      .map((p: any) => ({ name: p.name, url: `/${lang}/people/${p.slug}` }))
+    // flatMap, not map+filter(Boolean)+map: `filter(Boolean)` does not narrow
+    // `T | undefined` away in TypeScript, which is the only reason this had to
+    // fall back to `any` and discard a type Astro already knows.
+    relatedPeople: (item.data.related_people || []).flatMap((id: string) => {
+      const person = peopleById.get(id);
+      return person ? [{ name: person.name, url: `/${lang}/people/${person.slug}` }] : [];
+    })
   }));
 
 // Get Giscus configuration

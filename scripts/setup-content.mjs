@@ -120,7 +120,7 @@ const cleanDest = (source) => {
   let stat;
   try {
     stat = fs.lstatSync(dest);
-  } catch (e) {
+  } catch {
     // Path does not exist
     return true;
   }
@@ -133,7 +133,7 @@ const cleanDest = (source) => {
         log(`Reusing existing symlink -> ${source}`);
         return false;
       }
-    } catch (e) {
+    } catch {
       // Broken link or readlink failed, proceed to remove
     }
   } else if (stat.isFile()) {

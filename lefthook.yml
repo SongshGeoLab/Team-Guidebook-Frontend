@@ -1,0 +1,28 @@
+# Git hooks. Install once per clone with `npx lefthook install`
+# (the `prepare` script in package.json does this automatically after npm ci).
+#
+# Deliberately fast: only staged files are linted, and the Astro build is left
+# to CI. A hook that takes 30s gets bypassed with --no-verify, which makes it
+# worse than no hook at all.
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: '*.{js,mjs,ts,tsx,astro}'
+      run: npx eslint --max-warnings 0 --no-warn-ignored {staged_files}
+    format:
+      glob: '*.{js,mjs,ts,tsx,astro,json,md,css}'
+      # --write + stage_fixed, not --check: the repo predates Prettier, so a
+      # --check hook would block every commit that touches an old file until
+      # someone reformats it by hand. This formats incrementally instead —
+      # files get cleaned up as they are edited, with no big-bang diff.
+      run: npx prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+pre-push:
+  commands:
+    # The unit suite is ~0.4s; there is no reason to let a red test reach the
+    # remote and wait for CI to say so.
+    test:
+      run: npm test

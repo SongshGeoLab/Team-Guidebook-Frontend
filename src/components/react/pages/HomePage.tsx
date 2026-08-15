@@ -99,7 +99,7 @@ export function HomePage({ lang, news, projects }: HomePageProps) {
             <GlassCard
               key={project.id}
               className="p-6 flex flex-col h-full group"
-              onClick={() => window.location.assign(project.detailUrl || `/${lang}/projects/${project.id}`)}
+              href={project.detailUrl || `/${lang}/projects/${project.id}`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="p-2 bg-teal-500/20 rounded-lg text-teal-300">

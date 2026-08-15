@@ -14,7 +14,7 @@ const CALLOUT_TYPES = [
  */
 export default function remarkObsidianCallouts() {
   return function attacher() {
-    return function transformer(tree, file) {
+    return function transformer(tree) {
       if (!tree) return tree;
       visit(tree, 'blockquote', (node, index, parent) => {
         if (!parent || typeof index !== 'number' || !node.children || node.children.length === 0) {
@@ -25,18 +25,6 @@ export default function remarkObsidianCallouts() {
         if (firstChild.type !== 'paragraph' || !firstChild.children || firstChild.children.length === 0) {
           return;
         }
-
-        const extractText = (nodes) => {
-          let text = '';
-          for (const child of nodes) {
-            if (child.type === 'text') {
-              text += child.value;
-            } else if (child.children) {
-              text += extractText(child.children);
-            }
-          }
-          return text;
-        };
 
         // The marker lives on the FIRST LINE only. Matching against the whole
         // flattened paragraph made `\s*` swallow the newline, so a callout

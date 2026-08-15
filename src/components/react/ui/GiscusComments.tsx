@@ -132,11 +132,12 @@ export function GiscusComments({
 
     scriptLoadedRef.current = true;
 
-    // Cleanup function
+    // Cleanup function.
+    // Detach via the script's own parentNode rather than containerRef.current:
+    // by the time cleanup runs the ref may already point elsewhere (or be
+    // null), which would leak the iframe. The script knows its own parent.
     return () => {
-      if (containerRef.current && script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
+      script.parentNode?.removeChild(script);
       scriptLoadedRef.current = false;
     };
   }, [

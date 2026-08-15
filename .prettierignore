@@ -1,0 +1,19 @@
+# Build output and generated indexes
+dist/
+.astro/
+public/pagefind/
+
+# Vault content: a separate repository, symlinked in by scripts/setup-content.mjs.
+# Reformatting it here would either fail (broken symlink) or rewrite files this
+# repo does not own.
+.content/
+src/content/people/
+src/content/projects/
+src/content/library/
+
+# Fixtures are deliberate regression inputs — several encode exact whitespace
+# and hostile markup that a formatter would helpfully "fix".
+fixtures/
+
+package-lock.json
+CHANGELOG.md
