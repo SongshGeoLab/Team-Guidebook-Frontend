@@ -20,11 +20,16 @@
 
 内容仓库会在 dev/CI 被放到 `.content/`（软链或 clone）。后端会按如下规则映射到 collections：
 
+- `site`: `.content/Team-Guidebook/site.md`（单例；站点身份 + 「关于」页正文）
 - `news`: `.content/Team-Guidebook/档案馆/YYYY-MM-DD.md`（Obsidian 日记，按 bullet 抽取；仅 `publish: true` 才公开）
 - `people`: `.content/Team-Guidebook/通讯录/*.md`
 - `projects`: `.content/Team-Guidebook/图书馆/项目/*.md`
-- `library`: `.content/Team-Guidebook/图书馆/**/*.md`
-- `blog`：**尚未实现**（`src/content.config.ts` 只定义了 people / projects / news / library / publications）。阶段 2 才做独立栏目：`.content/Team-Guidebook/公告板/博客/*.md`
+- `research`: `.content/Team-Guidebook/图书馆/研究/*.md`
+- `resources`: `.content/Team-Guidebook/图书馆/资源/*.md`
+- `publications`: `.content/Team-Guidebook/图书馆/文献/*.bib`，并合并 `文献/精选/<bib_key>.md` sidecar
+- `library`: `.content/Team-Guidebook/图书馆/**/*.md`（排除上述子目录）
+- `translations`: vault 内所有 `**/*.en.md`（正文覆盖层，见 §4.3）
+- `blog`：**尚未实现**
 
 ## 2. 数据接口 (Content Collections API)
 
@@ -36,8 +41,10 @@
 
 | 集合名称 (Collection) | 用途 | 对应路由示例 | 关键字段 (Props) |
 | :--- | :--- | :--- | :--- |
-| `people` | 实验室成员 | `/[lang]/people/[slug]` | `name`, `role`, `avatar`, `email`, `interests` |
-| `projects` | 项目展示 | `/[lang]/projects/[slug]` | `title`, `people` (关联人员ID), `start_date`, `repo` |
+| `people` | 实验室成员 | `/[lang]/people/[slug]` | `name`, `role`（受控词表）, `status`, `avatar`, `email`, `interests` |
+| `projects` | 项目展示 | `/[lang]/projects/[slug]` | `title`, `summary`, `people` (关联人员ID), `start_date`, `repo`, `featured` |
+| `research` | 研究方向 | `/[lang]/research/[slug]` | `title`, `summary`, `order`, 交叉引用 people/projects/publications |
+| `resources` | 数据与工具 | `/[lang]/resources` | `title`, `type`, `url`, `doi`, `license` |
 | `news` | 动态/新闻 | `/[lang]/news` (列表) | `date`, `tags`, `related_people`, `body` (HTML) |
 | `publications` | 论文发表 | `/[lang]/publications` | (特殊) 由 BibTeX 解析的 JSON 对象列表 |
 | `library` | 知识库/Wiki | `/[lang]/library/[...slug]` | 标准 Markdown 内容 |
@@ -120,19 +127,21 @@ interface NewsItem {
 *   **后端承诺**: 默认解析到 Library：`<a href="/[lang]/library/..." class="internal-link">`。
 *   **前端任务**: 为 `.internal-link` 类添加样式 (例如虚线下划线或特定颜色)，以区分普通外部链接。
 
-## 4.3 i18n 范围（现状）
+## 4.3 i18n（现状）
 
-**实现现状**（与早期计划不同，此处描述的是代码实际行为）：
+**已实现**（此处描述的是代码实际行为）：
 
-- `/` 重定向到 `/en/`，默认语言只在 `astro.config.mjs` 一处定义。
-- `/zh` 与 `/en` 两棵路由树**渲染同一份中文内容**——没有任何按语言过滤的逻辑，
-  尽管 `src/content.config.ts` 的 library schema 已声明了 `lang` 字段。
-  差异仅限于 URL 前缀、`<html lang>` 与少量 UI 字符串。
-- `BaseLayout` 已输出 `canonical` 与 `hreflang`，因此重复内容对 SEO 无害；
-  但这不等于 `/en` 是真正的英文站。
+- `/` 重定向到 `/en/`，默认语言只在 `astro.config.mjs` 一处定义（`DEFAULT_LOCALE`）。
+- 中文是基准语言，英文是可选覆盖层。两种机制：
+  - **短字段**在同一文件内成对：`name` / `name_en`、`title` / `title_en`。
+  - **长正文**用兄弟文件 `<name>.en.md`，由 `translations` 集合承载。
+- 缺英文时回退中文，并渲染 `ui.i18n.fallbackNotice` 提示条——**不会出现空页**。
+- 唯一的取值入口是 `src/utils/localized.ts` 的 `pickLocalized` / `pickLocalizedList`
+  与 `resolveLocalized` / `translationIndex`。**页面里不要再写
+  `lang === 'zh' ? … : …` 去取内容字段**——那正是这个模块要消灭的东西。
+- `BaseLayout` 输出 `canonical` 与 `hreflang`；现在它们描述的是真实译文关系。
 
-**待决策**：是按 `data.lang` 过滤（`/en` 只渲染英文条目、其余走空态），
-还是暂时下线 `/en`。在此之前，任何"英文内容"的假设都不成立。
+**尚未覆盖**：News（日记 bullet）只渲染中文原文，英文路由显示同一条。
 
 ## 5. 开发建议
 

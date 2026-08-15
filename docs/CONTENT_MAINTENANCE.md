@@ -1,555 +1,338 @@
 # 内容仓库维护指南
 
-本文档面向内容维护者，说明如何在 `Team-Guidebook` 内容仓库中维护文档，以便正确显示在实验室站点上。
+本文档面向内容维护者，说明如何在 `Team-Guidebook` 内容仓库（Obsidian vault）中组织内容，
+以便正确显示在实验室站点上。
+
+**这份文档是站点与内容之间的契约。** 站点的 Zod schema 定义在
+`src/content.config.ts`，本文档描述的就是它——两者不一致时以代码为准，并请提 issue。
 
 ## 目录结构
 
-内容仓库采用 **Direct Map** 策略，直接使用现有的 Obsidian 目录结构，无需重新组织。站点会自动映射以下目录：
+内容仓库采用 **Direct Map** 策略，直接使用既有的 Obsidian 目录结构：
 
 ```
 Team-Guidebook/
-├── 通讯录/              # People 集合
-│   └── *.md            # 成员信息文件
-├── 图书馆/
-│   ├── 项目/           # Projects 集合
-│   │   └── *.md       # 项目文件
-│   ├── 文献/           # Publications 集合（BibTeX 文件）
-│   │   └── *.bib      # 论文 BibTeX 文件
-│   └── **/*.md         # Library 集合（知识库文档）
-│       ├── 专栏/       # 专栏文章
-│       └── 词条/       # 词条文档
-├── 档案馆/              # News 集合
-│   └── YYYY-MM-DD.md  # 日记文件（Daily Notes）
-├── assets/             # 附件目录（图片、PDF 等）
-└── 图片库/              # 图片附件目录
+├── site.md                  # 站点身份（名称、口号、社交链接）+ 「关于」页正文
+├── 通讯录/                   # People 集合
+│   ├── *.md                 #   成员信息
+│   └── *.en.md              #   成员英文简介（可选，见「双语」）
+├── 档案馆/                   # News 集合
+│   └── YYYY-MM-DD.md        #   Obsidian 日记，按 bullet 抽取
+├── 图书馆/                   # Library 集合（知识库，除下列子目录外）
+│   ├── 项目/*.md             # Projects 集合
+│   ├── 研究/*.md             # Research 集合（研究方向）
+│   ├── 资源/*.md             # Resources 集合（数据与工具）
+│   ├── 文献/
+│   │   ├── *.bib            # Publications 集合（Zotero 导出）
+│   │   └── 精选/<bib_key>.md #   精选论文的补充信息（sidecar）
+│   ├── 专栏/                 # 知识库文章
+│   └── 词条/                 # 知识库词条
+├── assets/                  # 附件（图片、PDF）
+└── 图片库/                   # 图片附件
 ```
 
-## 内容类型维护指南
+> `项目/`、`研究/`、`资源/`、`文献/` 虽然位于 `图书馆/` 之下，但**不属于** Library 集合——
+> 它们各有自己的集合与页面。这条规则定义在 `src/utils/contentLayout.js` 的
+> `OWNED_BY_OTHER_COLLECTIONS`，只有那一处。
 
-### 1. People（成员信息）
+---
 
-**位置**：`通讯录/*.md`
+## 双语
 
-**必需字段**：
-- `id`: 唯一标识符（通常与文件名相同，kebab-case）
-- `name`: 显示名称
-- `role`: 角色（如 "教授"、"博士后"、"博士生"、"硕士生"、"校友"）
+站点有 `/zh` 与 `/en` 两套路由。**中文是基准语言，英文是可选的覆盖层**；缺英文时页面
+回退到中文，并在正文上方显示一条提示——不会出现空白页。
 
-**可选字段**：
-- `avatar`: 头像路径（如 `/attachments/avatar.jpg`）
-- `email`: 邮箱地址
-- `aliases`: 别名数组（用于在 News 中通过 `#P/<Name>` 标签关联）
-- `links`: 外部链接数组（如个人主页、GitHub）
-- `interests`: 研究兴趣数组
-- `publish`: 是否发布（默认 `true`）
-- `date`: 创建或更新日期
-- `tags`: 标签数组
+机制有两种，按字段长短选择：
 
-**示例**：
+### 1. 短字段：同一文件内成对
+
+在同一个 `.md` 的 frontmatter 里用 `字段` / `字段_en` 成对存放：
+
+```yaml
+name: 宋爽
+name_en: Shuang Song
+title: 研究组长
+title_en: Group Leader
+```
+
+> **为什么不整份文件复制两遍**：`email`、`orcid`、`role` 这些与语言无关的字段会被迫
+> 维护两份，然后不可避免地漂移。
+
+支持配对的字段在下文各集合中标注为 `x` / `x_en`。
+
+### 2. 长正文：兄弟文件
+
+在基准文件旁边放一个 `<同名>.en.md`，只写正文：
+
+```
+通讯录/song-shuang.md      ← 中文，完整 frontmatter + 中文正文
+通讯录/song-shuang.en.md   ← 英文，只需下面两行 frontmatter + 英文正文
+```
 
 ```yaml
 ---
-id: alice-wang
-name: 王爱丽丝
-role: 博士生
-avatar: /attachments/alice.jpg
-email: alice@example.com
-aliases:
-  - 爱丽丝
-  - Alice
-links:
-  - label: 个人主页
-    url: https://alice.example.com
-  - label: GitHub
-    url: https://github.com/alice
-interests:
-  - 机器学习
-  - 地理信息系统
-publish: true
-tags:
-  - 机器学习
-  - GIS
+lang: en
+translation_of: song-shuang   # 可选，仅供作者自己对照
 ---
-
-# 王爱丽丝
-
-我是实验室的博士生，专注于机器学习在地理信息系统中的应用。
 ```
 
-**注意事项**：
-- `aliases` 字段用于在 News 日记中通过 `#P/<Name>` 标签自动关联成员
-- 文件名建议使用 kebab-case（如 `alice-wang.md`），与 `id` 保持一致
-- 设置 `publish: false` 可以隐藏成员信息（但文件仍会被处理）
+`.en.md` 文件**只承载正文**。不要在里面重复 `role`、`email` 等字段——它们不会被读取。
 
-### 2. Projects（项目信息）
+适用于：`通讯录/`、`图书馆/项目/`、`图书馆/研究/`、`图书馆/资源/`、`图书馆/` 知识库。
 
-**位置**：`图书馆/项目/*.md`
+### 3. News 的双语
 
-**必需字段**：
-- `id`: 唯一标识符
-- `title`: 项目标题
-- `start_date`: 开始日期（格式：`YYYY-MM-DD`）
+日记 bullet 用嵌套子项，避免条目顺序漂移：
 
-**可选字段**：
-- `end_date`: 结束日期（格式：`YYYY-MM-DD`，留空表示"进行中"）
-- `people`: 参与人员 ID 数组（必须匹配 People 集合中的 `id`）
-- `repo`: GitHub 仓库 URL
-- `bib_key`: 关联的 BibTeX key（如果有相关论文）
-- `publish`: 是否发布（默认 `true`）
-- `date`: 创建或更新日期
-- `tags`: 标签数组
+```markdown
+- 我们的论文被 **Nature** 接收 #P/宋爽
+```
 
-**示例**：
+> News 目前只渲染中文原文，英文路由显示同一条。这是已知限制，不是 bug。
+
+---
+
+## 各集合字段说明
+
+所有集合都支持 `publish`（布尔，默认 `true`）与 `tags`（数组，默认 `[]`）。
+`publish: false` 的条目既不出现在列表里，也不会生成页面。
+
+### site.md（站点配置，单例）
+
+放在 vault 根目录。**正文会渲染为「关于」页面。**
+
+| 字段 | 必需 | 说明 |
+| :--- | :--- | :--- |
+| `name` / `name_en` | ✅ name | 实验室名称，显示在页头、页脚与首页 |
+| `tagline` / `tagline_en` | | 一句话简介 |
+| `headline` / `headline_en` | | 首页大标题第一行 |
+| `headline_accent` / `headline_accent_en` | | 首页大标题第二行（渐变强调色） |
+| `affiliation` / `affiliation_en` | | 所属机构 |
+| `email`、`address` / `address_en` | | 联系方式，显示在「关于」页 |
+| `logo` | | `/attachments/` 下的路径 |
+| `socials` | | `[{label, url, icon}]`，显示在页脚 |
+| `footer_note` / `footer_note_en` | | 页脚附注 |
+| `nav` | | `[{href, label, label_en}]`，**覆盖**默认导航 |
+
+> `nav` 请谨慎使用。导航项指向的是路由，而路由由代码决定——在这里写一个不存在的页面，
+> 站点会正常构建，读者会拿到 404。不填则使用代码里那份能被验证的默认导航。
+
+### 通讯录/*.md（People）
+
+| 字段 | 必需 | 说明 |
+| :--- | :--- | :--- |
+| `id` | ✅ | 唯一标识，kebab-case，建议与文件名一致 |
+| `name` / `name_en` | ✅ name | 显示名称 |
+| `role` | ✅ | **受控词表**，见下 |
+| `title` / `title_en` | | 自由文本职称，如「副教授」。显示在卡片上 |
+| `order` | | 组内排序；不填则排在填了的后面，再按姓名排 |
+| `status` | | `current`（默认）或 `alumni` |
+| `destination` / `destination_en` | | 校友去向，如「示例大学助理教授」 |
+| `joined` / `left` | | `YYYY-MM-DD` |
+| `avatar` | | 头像路径，如 `/attachments/alice.jpg` |
+| `email` | | 邮箱 |
+| `aliases` | | 别名数组，用于 News 中 `#P/<名字>` 的解析 |
+| `interests` / `interests_en` | | 研究兴趣数组 |
+| `links` | | `[{label, url}]` 自由外链 |
+| `orcid`、`scholar`、`github`、`homepage` | | 学术档案，会渲染成带图标的链接 |
+
+**`role` 受控词表**（定义在 `src/utils/roles.ts`）：
+
+`pi` · `postdoc` · `phd` · `master` · `undergrad` · `staff` · `visitor`
+
+常见中英文写法会自动归一化——`教授`、`Professor`、`Principal Investigator` 都归入 `pi`，
+`博士生`、`PhD Student`、`Ph.D. student` 都归入 `phd`，大小写与首尾空格不敏感。
+**词表之外的写法不会报错**，但会落到「其他成员 / Others」分组里——如果你看到某人出现在
+那里，说明该写法还没被收录，请提 issue 或直接写受控值。
+
+> 从前 `role` 是自由文本，分组靠与十个硬编码写法逐字比对，写成 `Ph.D. student`
+> 或多打一个空格就会自成一组、静默排到最后。
+
+校友单独成组，横跨所有 role——一位毕业的博士生显示在「毕业与离任成员」下，而不是
+仍然出现在「博士生」里。
+
+### 图书馆/项目/*.md（Projects）
+
+| 字段 | 必需 | 说明 |
+| :--- | :--- | :--- |
+| `id` | ✅ | 唯一标识 |
+| `title` / `title_en` | ✅ title | 项目标题 |
+| `summary` / `summary_en` | | 卡片文案，一到两行 |
+| `start_date` | ✅ | `YYYY-MM-DD` |
+| `end_date` | | 留空表示「进行中 / Present」 |
+| `people` | | 成员 `id` 数组 |
+| `research` | | 所属研究方向 `id` 数组 |
+| `repo` | | 代码仓库 URL |
+| `bib_key` | | 关联论文的 BibTeX key |
+| `cover` | | 封面图路径 |
+| `featured` | | `true` 才会出现在首页精选 |
+| `order` | | 精选项目之间的排序 |
+
+> 首页「精选项目」从前是「集合里的前三条」，也就是文件系统碰巧返回的顺序，内容维护者
+> 无法影响。现在必须显式 `featured: true`。
+
+### 图书馆/研究/*.md（Research，研究方向）
+
+研究方向是**常青**的——没有起止日期，比任何单个项目都长久。这正是它与「项目」的区别：
+项目回答「我们现在拿谁的钱在做什么」，方向回答「我们研究什么」。
+
+| 字段 | 必需 | 说明 |
+| :--- | :--- | :--- |
+| `id` | ✅ | 唯一标识 |
+| `title` / `title_en` | ✅ title | 方向名称 |
+| `summary` / `summary_en` | | 卡片一句话 |
+| `order` | | 显示顺序（默认 0）。方向数量少，建议手工排定 |
+| `cover` | | 配图 |
+| `people` | | 负责成员 `id` 数组 |
+| `featured_publications` | | **BibTeX key** 数组，代表论文 |
+| `projects` | | 项目 `id` 数组 |
+
+> 上面三个引用字段在构建时解析。**引用不到的 id 会被静默丢弃**（不渲染死链），
+> 所以如果某篇代表论文没显示出来，先检查 key 是否拼对。
+
+### 图书馆/资源/*.md（Resources，数据与工具）
+
+| 字段 | 必需 | 说明 |
+| :--- | :--- | :--- |
+| `id` | ✅ | 唯一标识 |
+| `title` / `title_en` | ✅ title | 名称 |
+| `type` | ✅ | `dataset` \| `code` \| `model` \| `tool` \| `course` |
+| `url` | ✅ | 获取地址 |
+| `summary` / `summary_en` | | 一句话说明 |
+| `doi` | | 资源本身的 DOI |
+| `repo`、`license`、`version` | | 仓库、许可协议（建议 SPDX）、版本号 |
+| `released` | | `YYYY-MM-DD`，列表按此倒序 |
+| `people` | | 维护者 `id` 数组 |
+| `bib_key` | | 使用时应引用的论文 |
+
+### 图书馆/文献/*.bib（Publications）
+
+**`.bib` 文件由 Zotero 导出，请勿手工添加自定义字段。** Zotero 每次重新导出都会整体
+覆写并丢弃它不认识的字段——写进去的封面图和亮点，会一直存活到下一次导出为止。
+
+必需：`title`、`author`、`year`。可选：`journal` / `booktitle`、`doi`、`keywords`。
+
+- `keywords` 会解析为 `tags` 用于筛选；`English`、`中文` 这类语言名会被自动剔除。
+- `file` / `pdf` 只接受 `http(s)://` 或以 `/` 开头的站内路径。Zotero 默认写入的本地
+  绝对路径（`/Users/…/Zotero/storage/…`）会被忽略，并在构建日志中给出警告。
+- 论文类型由 BibTeX 条目类型推断：`@article`→期刊，`@inproceedings`→会议，
+  `@misc`→预印本，`@incollection`→章节，`@book`→专著，`@phdthesis`→学位论文。
+
+### 图书馆/文献/精选/<bib_key>.md（精选论文 sidecar）
+
+站点需要而 BibTeX 放不下的一切，都写在这里，按 **citation key** 关联。
+文件名即 key（也可用 `bib_key` 字段显式指定）。
 
 ```yaml
 ---
-id: ml-gis-project
-title: 机器学习在地理信息系统中的应用
-start_date: 2024-01-01
-end_date: 2024-12-31
-people:
-  - alice-wang
-  - bob-li
-repo: https://github.com/lab/ml-gis
-bib_key: mlgis2024
-tags:
-  - 机器学习
-  - GIS
-  - 深度学习
-publish: true
+bib_key: zeng2023            # 可省略，默认取文件名
+featured: true               # 默认 true
+order: 1
+cover: /attachments/zeng2023.png
+highlight: 首次量化了…
+highlight_en: The first quantification of…
+author_ids: [song-shuang]    # 本组作者，链接回成员页
+code: https://github.com/...
+data: https://doi.org/...
+press:
+  - outlet: 科技日报
+    outlet_en: Science Daily
+    url: https://...
+    date: 2024-02-01
 ---
-
-# 机器学习在地理信息系统中的应用
-
-这是一个研究项目，旨在探索机器学习技术在地理信息系统中的应用。
-
-## 项目目标
-
-- 目标 1
-- 目标 2
-
-## 进展
-
-项目目前进展顺利...
 ```
 
-**注意事项**：
-- `people` 字段中的 ID 必须与 `通讯录/` 中的成员 `id` 匹配
-- 日期格式必须为 `YYYY-MM-DD`
-- 如果项目仍在进行中，可以不设置 `end_date` 或设置为空
+> 如果 `bib_key` 在任何 `.bib` 里都找不到，构建会**报警告并指出文件名**。
+> 从前这类错误是静默的，作者只会看到自己的亮点始终不出现。
 
-### 3. News（动态/新闻）
+### 档案馆/YYYY-MM-DD.md（News）
 
-**位置**：`档案馆/YYYY-MM-DD.md`（Obsidian Daily Notes）
+**必须显式 `publish: true` 才会发布**；`draft: true` 会覆盖它。
 
-**发布控制**：
-- 必须在 frontmatter 中设置 `publish: true` 才会被提取
-- 如果设置了 `draft: true`，即使 `publish: true` 也不会被提取
-- 如果 `publish` 字段缺失或为 `false`，文件会被忽略
-
-**内容格式**：
-- 每个 bullet 点（`-` 开头的列表项）会被提取为一个独立的 news 条目
-- 支持 Markdown 格式（粗体、链接、代码等）
-- 使用 `#P/<Name>` 标签关联成员（会自动解析为 `related_people`）
-
-**必需字段**（frontmatter）：
-- `publish: true`（显式设置，否则不会发布）
-
-**可选字段**（frontmatter）：
-- `draft: false`（如果为 `true`，即使 `publish: true` 也不会发布）
-- `date`: 日期（通常从文件名提取，格式：`YYYY-MM-DD`）
-- `tags`: 标签数组
-
-**示例**：
+每个顶层 bullet（`-` 或 `*` 开头）成为一条独立动态。用 `#P/<名字>` 关联成员，
+其余 `#标签` 解析为 tags。
 
 ```yaml
 ---
 publish: true
 draft: false
-date: 2024-12-30
-tags:
-  - 会议
-  - 论文发表
 ---
 
 # 2024-12-30
 
-- 今天参加了 **ICML 2024** 会议，做了关于机器学习的报告 #P/王爱丽丝
+- 今天参加了 **ICML 2024** 会议 #P/王爱丽丝 #会议
 - 我们的论文被 **Nature** 接收了！ #P/王爱丽丝 #P/李波
-- 实验室新成员 #P/张小明 加入了我们的项目
 ```
 
-**注意事项**：
-- 日期通常从文件名提取（`YYYY-MM-DD.md`），但也可以在 frontmatter 中指定
-- `#P/<Name>` 标签会通过 People 集合的 `aliases` 字段解析为成员 ID
-- 如果 `#P/<Name>` 无法匹配到任何成员，会被忽略（不会报错）
-- 每个 bullet 点会成为一个独立的 news 条目，显示在时间轴上
+- 日期从文件名提取（必须是 `YYYY-MM-DD.md`），也可在 frontmatter 中指定。
+- `#P/<名字>` 通过成员的 `id`、文件名、`name` 或 `aliases` 解析。
+  **解析不到会在构建日志中告警**并指出是哪个文件——请留意，这类拼写错误从前是完全静默的。
 
-### 4. Library（知识库文档）
+### 图书馆/**/*.md（Library 知识库）
 
-**位置**：`图书馆/**/*.md`（不包括 `项目/` 和 `文献/` 子目录）
+保留 Obsidian 目录树作为侧边栏导航，schema 宽松，允许额外字段。
 
-**特点**：
-- 保留 Obsidian 目录树结构作为侧边栏导航
-- 支持任意深度的嵌套目录
-- Schema 非常宽松，允许额外的 frontmatter 字段
+| 字段 | 说明 |
+| :--- | :--- |
+| `title` / `title_en` | 页面标题（默认取文件名） |
+| `description` 或 `excerpt` | 索引页卡片摘要 |
+| `date`、`tags` | 日期与标签 |
+| `lang` | 本篇语言（默认 `zh`）。英文正文通常用 `.en.md` 兄弟文件，不需要手写这个 |
 
-**可选字段**：
-- `title`: 页面标题（默认使用文件名）
-- `lang`: 语言（`zh` 或 `en`，通常从路径推断）
-- `publish`: 是否发布（默认 `true`）
-- `date`: 创建或更新日期
-- `tags`: 标签数组
-
-**示例**：
-
-```yaml
 ---
-title: Git 版本控制指南
-lang: zh
-tags:
-  - Git
-  - 版本控制
-  - 工具
-publish: true
----
-
-# Git 版本控制指南
-
-这是一篇关于 Git 使用的知识库文档。
-
-## 基本命令
-
-- `git clone`: 克隆仓库
-- `git add`: 添加文件到暂存区
-
-## 相关链接
-
-- [[GitHub]] - GitHub 使用指南
-- [[Mesa-Geo]] - Mesa-Geo 项目文档
-```
-
-**注意事项**：
-- Library 文档支持 WikiLinks（`[[链接]]`），默认解析到 `/[lang]/library/...`
-- 建议使用路径形式的 WikiLinks 避免歧义：`[[词条/Git]]` 而不是 `[[Git]]`
-- 目录结构会保留，URL 路径会根据目录结构自动生成
-- 支持 Obsidian 的所有 Markdown 语法（Callouts、图片嵌入等）
-
-### 5. Publications（论文发表）
-
-**位置**：`图书馆/文献/*.bib` 或 `图书馆/*.bib`
-
-**格式**：BibTeX 文件（`.bib`）
-
-**必需字段**（BibTeX entry）：
-- `title`: 论文标题
-- `author`: 作者列表（用 `and` 分隔）
-- `year`: 发表年份
-
-**可选字段**（BibTeX entry）：
-- `journal` 或 `booktitle`: 发表期刊或会议
-- `doi`: DOI 号（会自动添加 `https://doi.org/` 前缀）
-- `file` 或 `pdf`: PDF 文件路径
-- `keywords`: 关键词（用逗号或分号分隔，会解析为 `tags`）
-
-**示例**：
-
-```bibtex
-@article{mlgis2024,
-  title = {Machine Learning Applications in Geographic Information Systems},
-  author = {Wang, Alice and Li, Bob},
-  journal = {Nature},
-  year = {2024},
-  doi = {10.1038/s41586-024-xxxxx},
-  file = {:/attachments/mlgis2024.pdf:PDF},
-  keywords = {machine learning, GIS, deep learning}
-}
-```
-
-**注意事项**：
-- BibTeX 文件可以包含多个条目，每个条目都会成为一个独立的 publication
-- `keywords` 字段会被解析为 `tags`，用于筛选
-- PDF 路径如果使用 Obsidian 格式（`:/attachments/...`），需要确保文件在 `assets/` 或 `图片库/` 目录中
-- 系统会优先查找 `图书馆/文献/` 目录，如果不存在则查找 `图书馆/` 根目录
-
-## Frontmatter 字段说明
-
-### 通用字段
-
-所有内容类型都支持以下字段：
-
-- **`publish`** (boolean, 默认 `true`): 控制是否在网站上显示
-  - `publish: false` 的内容不会出现在列表中，也不会生成页面路由
-  - 如果字段缺失，默认为 `true`
-
-- **`date`** (string/date, 可选): 创建或更新日期
-  - 格式：`YYYY-MM-DD` 或 ISO 8601 格式
-  - 会自动转换为 Date 对象
-
-- **`tags`** (array, 默认 `[]`): 标签数组
-  - 用于分类和筛选
-  - 示例：`tags: [机器学习, GIS, 深度学习]`
 
 ## Obsidian 语法支持
 
-站点完全支持 Obsidian 的 Markdown 语法，包括：
+### WikiLinks
 
-### 1. WikiLinks（内部链接）
+`[[链接]]` 或 `[[链接|显示文本]]`，默认解析到 Library：`[[Git]]` → `/zh/library/词条/Git`。
 
-**语法**：`[[链接文本]]` 或 `[[链接文本|显示文本]]`
+- **URL 保留大小写与原路径**（`词条/Git` 不会变成 `词条/git`）。
+- 建议使用路径形式避免歧义：`[[词条/Git]]` 优于 `[[Git]]`。
+- 支持显式语言前缀：`[[en/Page]]`。
+- **解析不到的链接会渲染为带删除样式的 `internal-link-broken`，而不是一个看起来
+  正常却 404 的链接**，同时在构建日志中告警。
 
-**解析规则**：
-- 默认解析到 Library：`[[Git]]` → `/[lang]/library/git`
-- 建议使用路径形式避免歧义：`[[词条/Git]]` → `/[lang]/library/词条/git`
-- 支持显式语言前缀：`[[en/Page]]` → `/en/library/page`
-- 生成的链接会自动添加 `internal-link` CSS 类
+### Callouts
 
-**示例**：
+`> [!TYPE] 标题`，支持 `note` `info` `tip` `success` `warning` `danger` `failure`
+`question` `bug` `example` `quote` `abstract`。
 
-```markdown
-- 查看 [[Git]] 使用指南
-- 参考 [[专栏/Python4Science/Week1_导论]] 了解更多
-- 英文版本：[[en/Git]]
-```
+### 图片嵌入
 
-### 2. Callouts（提示框）
+`![[image.png]]` → `/attachments/image.png`，自动带上 `loading="lazy"`。
+图片须位于 `assets/` 或 `图片库/`，构建时同步到 `public/attachments/`。同名文件会告警。
 
-**语法**：`> [!TYPE] Title` 后跟内容
-
-**支持的类型**：
-- `note` - 普通提示
-- `info` - 信息提示
-- `tip` - 技巧提示
-- `success` - 成功提示
-- `warning` - 警告提示
-- `danger` 或 `failure` - 危险/失败提示
-- `question` - 问题提示
-- `bug` - Bug 提示
-- `example` - 示例提示
-- `quote` - 引用提示
-
-**示例**：
-
-```markdown
-> [!INFO] 重要提示
-> 这是一个信息提示框，用于突出显示重要信息。
-
-> [!WARNING] 注意事项
-> 使用此功能时请注意以下事项：
-> 1. 第一点
-> 2. 第二点
-
-> [!TIP] 技巧
-> 这是一个小技巧，可以帮助你更高效地工作。
-```
-
-### 3. 图片嵌入
-
-**语法**：`![[image.png]]` 或 `![[path/to/image.png]]`
-
-**解析规则**：
-- 自动转换为标准 Markdown 图片：`![](/attachments/image.png)`
-- 支持嵌套路径：`![[subfolder/image.png]]` → `![](/attachments/subfolder/image.png)`
-- 图片必须位于 `assets/` 或 `图片库/` 目录中
-
-**示例**：
-
-```markdown
-![描述](![[logo.png]])
-
-或者直接使用：
-
-![[screenshot.png]]
-```
-
-**注意事项**：
-- 图片文件必须存在于 `assets/` 或 `图片库/` 目录中
-- 构建时会自动同步到网站的 `public/attachments/` 目录
-- 如果文件名冲突，构建会发出警告
-
-### 4. 标准 Markdown
-
-所有标准 Markdown 语法都支持：
-- 标题（`#` 到 `######`）
-- 粗体（`**text**`）、斜体（`*text*`）
-- 代码（`` `code` `` 和 ` ``` ` 代码块）
-- 列表（有序和无序）
-- 链接（`[text](url)`）
-- 表格
-- 等等
-
-## 附件管理
-
-### 附件目录
-
-附件文件应放在以下目录之一：
-
-- `Team-Guidebook/assets/` - 通用附件目录
-- `Team-Guidebook/图片库/` - 图片专用目录
-
-### 附件同步
-
-- 构建时会自动将附件同步到网站的 `public/attachments/` 目录
-- 在 Markdown 中引用附件时，使用 `/attachments/文件名` 路径
-- 支持嵌套目录结构
-
-### 附件引用方式
-
-**方式 1：Obsidian 嵌入语法**（推荐）
-
-```markdown
-![[image.png]]
-![[subfolder/document.pdf]]
-```
-
-**方式 2：标准 Markdown 图片**
-
-```markdown
-![](/attachments/image.png)
-![描述](/attachments/image.png)
-```
-
-**方式 3：标准 Markdown 链接**
-
-```markdown
-[下载文档](/attachments/document.pdf)
-```
-
-### 文件名冲突
-
-如果多个附件目录中存在同名文件，构建会发出警告。建议：
-- 使用有意义的文件名避免冲突
-- 使用子目录组织附件
-- 如果必须使用相同文件名，考虑重命名其中一个
-
-## 发布控制
-
-### publish 字段
-
-所有内容类型都支持 `publish` 字段来控制是否在网站上显示：
-
-- `publish: true`（默认）：内容会出现在网站上
-- `publish: false`：内容不会出现在列表中，也不会生成页面路由
-
-**示例**：
-
-```yaml
 ---
-publish: false  # 这个成员信息不会显示在网站上
-name: 测试用户
-role: 测试角色
----
-```
-
-### News 的特殊规则
-
-News 集合有特殊的发布控制规则：
-
-1. **必须显式设置 `publish: true`** 才会被提取
-2. 如果设置了 `draft: true`，即使 `publish: true` 也不会被提取
-3. 如果 `publish` 字段缺失或为 `false`，文件会被完全忽略
-
-**示例**：
-
-```yaml
----
-publish: true   # 必须显式设置
-draft: false    # 确保不是草稿
-date: 2024-12-30
----
-
-# 2024-12-30
-
-- 这条动态会被发布
-```
-
-## 人员关联（News）
-
-在 News 日记中，可以使用 `#P/<Name>` 标签关联成员：
-
-**语法**：`#P/<Name>`
-
-**解析规则**：
-- 系统会通过 People 集合的 `aliases` 字段匹配成员
-- 匹配成功后，会自动添加到 `related_people` 字段
-- 如果无法匹配，标签会被忽略（不会报错）
-
-**示例**：
-
-```markdown
-- 今天 #P/王爱丽丝 做了关于机器学习的报告
-- 我们的论文被接收了！ #P/王爱丽丝 #P/李波
-```
-
-**注意事项**：
-- 确保成员的 `aliases` 字段包含所有可能的名称变体
-- 标签名称必须与 `aliases` 中的某个值完全匹配（区分大小写）
-- 可以在一个 bullet 点中使用多个 `#P/` 标签关联多个成员
 
 ## 常见问题
 
-### Q: 如何隐藏某个内容？
+**Q：成员出现在「其他成员」分组里？**
+`role` 的写法不在受控词表的别名表内。改用受控值（`pi`/`phd`/…），或提 issue 补充别名。
 
-A: 在 frontmatter 中设置 `publish: false`。
+**Q：英文页面显示的是中文？**
+说明缺少 `.en.md` 兄弟文件（长正文）或 `_en` 字段（短字段）。页面上那条提示条就是在说这件事。
 
-### Q: News 日记没有被提取？
+**Q：精选论文的亮点没显示？**
+检查构建日志。sidecar 的 `bib_key` 对不上任何 `.bib` 条目时会有告警并指出文件名。
 
-A: 检查以下几点：
-1. 文件名格式是否为 `YYYY-MM-DD.md`
-2. frontmatter 中是否设置了 `publish: true`
-3. 是否设置了 `draft: true`（如果设置了，即使 `publish: true` 也不会发布）
-4. 文件中是否有 bullet 点（`-` 开头的列表项）
+**Q：研究方向里的代表论文/项目没显示？**
+`featured_publications` 用的是 **BibTeX key**，`projects` / `people` 用的是 **id**。
+引用不到的会被静默丢弃。
 
-### Q: WikiLinks 链接不正确？
+**Q：News 日记没被提取？**
+依次检查：文件名是否 `YYYY-MM-DD.md`、是否 `publish: true`、是否 `draft: true`、
+文件里是否有 `-` 开头的 bullet。
 
-A: 
-1. 确保目标文件存在于 Library 集合中
-2. 使用路径形式的 WikiLinks 避免歧义：`[[词条/Git]]` 而不是 `[[Git]]`
-3. 检查文件名和路径是否正确
+**Q：改了内容但 dev server 没更新？**
+News 与 Publications 用的是自定义 loader。**已知限制**：loader 会重新读取，但 Astro 不会
+重新渲染路由，需要重启 dev server。
 
-### Q: 图片无法显示？
-
-A: 
-1. 确保图片文件在 `assets/` 或 `图片库/` 目录中
-2. 检查文件名和路径是否正确
-3. 查看构建日志中是否有附件同步错误
-
-### Q: `#P/<Name>` 标签无法关联成员？
-
-A: 
-1. 确保成员的 `aliases` 字段包含该名称
-2. 检查标签格式是否正确（`#P/` 前缀，名称区分大小写）
-3. 确保成员文件的 `publish: true`
-
-### Q: Projects 中的 `people` 字段无法关联？
-
-A: 
-1. 确保 `people` 数组中的 ID 与 `通讯录/` 中的成员 `id` 完全匹配
-2. 检查成员文件是否存在且 `publish: true`
-3. ID 区分大小写，必须完全一致
-
-### Q: Publications 没有被解析？
-
-A: 
-1. 确保 BibTeX 文件在 `图书馆/文献/` 或 `图书馆/` 根目录中
-2. 检查 BibTeX 格式是否正确
-3. 确保每个条目都有 `title`、`author`、`year` 字段
-4. 查看构建日志中是否有解析错误
-
-## 最佳实践
-
-1. **使用有意义的文件名**：文件名应该清晰描述内容，使用 kebab-case
-2. **保持 frontmatter 简洁**：只包含必要的字段
-3. **使用路径形式的 WikiLinks**：避免歧义，提高可维护性
-4. **合理组织附件**：使用子目录组织附件，避免文件名冲突
-5. **及时更新 `aliases`**：确保 News 中的人员关联正常工作
-6. **使用标签分类**：合理使用 `tags` 字段进行分类
-7. **定期检查 `publish` 状态**：确保只有需要发布的内容设置了 `publish: true`
+---
 
 ## 相关文档
 
-- [配置指南](./CONFIGURATION.md) - 环境变量和内容同步配置
-- [本地测试指南](./LOCAL_TESTING.md) - 本地开发和测试说明
-- [Vercel 部署指南](./VERCEL_DEPLOYMENT.md) - 生产环境部署配置
-- [Giscus 配置指南](./GISCUS_SETUP.md) - 评论系统配置
-
+- [配置指南](./CONFIGURATION.md)
+- [本地测试指南](./LOCAL_TESTING.md)
+- [Vercel 部署指南](./VERCEL_DEPLOYMENT.md)
+- [Giscus 配置指南](./GISCUS_SETUP.md)

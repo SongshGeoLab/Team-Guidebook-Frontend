@@ -2,7 +2,12 @@
 
 Astro + TypeScript + Tailwind static site for the lab. Content is Obsidian-driven with direct mapping from the `Team-Guidebook/` vault.
 
-Dual-language routes `/zh` and `/en` are scaffolded, and `/` redirects to **`/en/`** — the default locale is set in exactly one place, `astro.config.mjs`. Note that both trees currently render the same Chinese content; filtering by `data.lang` is not implemented yet.
+Dual-language routes `/zh` and `/en` share one `src/pages/[lang]/` tree, and `/` redirects to **`/en/`** — the default locale is set in exactly one place, `astro.config.mjs`.
+
+Chinese is the base language; English is an optional overlay. Short fields pair
+in one file (`name` / `name_en`), long prose goes in a `<name>.en.md` sibling
+picked up by the `translations` collection. A page with no English falls back to
+the Chinese **and says so**. See [Content Maintenance](./docs/CONTENT_MAINTENANCE.md#双语).
 
 ## Content Sync Strategy
 

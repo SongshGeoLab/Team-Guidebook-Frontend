@@ -51,7 +51,13 @@ log('');
 
 // Check Content Collections symlinks
 log('2. Checking Content Collections symlinks:');
-const collections = ['people', 'projects', 'library', 'publications'];
+// Only the collections that setup-content.mjs actually symlinks. `publications`
+// was listed here long after the loader stopped needing a symlink (it reads
+// .content directly), so this diagnostic reported a failure on every healthy
+// checkout — a false alarm baked into the tool meant to find real ones.
+// `research` and `resources` live under the `library` symlink, and `site` and
+// `translations` are globbed from the vault root, so none of them appear here.
+const collections = ['people', 'projects', 'library'];
 
 for (const collection of collections) {
   const collectionPath = path.join(srcContentDir, collection);
