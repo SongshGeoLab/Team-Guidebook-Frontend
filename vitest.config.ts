@@ -12,11 +12,6 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    // test/e2e/ drives a real browser and is deliberately NOT matched here —
-    // this pattern only takes .test.ts, and those harnesses are .mjs. No
-    // `exclude` key: setting one REPLACES vitest's defaults (node_modules,
-    // dist), which would be a real loss to restate a rule `include` already
-    // enforces. See test/e2e/README.md.
     include: ['test/**/*.test.ts'],
     environment: 'node',
     // The vault fixtures are read from disk by some tests; keep the repo root
