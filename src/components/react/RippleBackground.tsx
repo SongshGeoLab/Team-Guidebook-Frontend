@@ -208,10 +208,14 @@ function InnerScene({ bgUrl }: { bgUrl: string }) {
 export default function RippleBackground({ imageUrl = '/background.jpg' }: { imageUrl?: string }) {
   return (
     // aria-hidden: purely decorative, and the canvas has no accessible content
-    // to announce. Sits at -z-20, above BaseLayout's static -z-30 backdrop, so
-    // the static image shows through until this mounts rather than flashing
-    // black.
-    <div className="fixed inset-0 -z-20 bg-black" aria-hidden="true">
+    // to announce.
+    //
+    // No bg-black and no gradient here. This layer sits at -z-20, directly on
+    // top of BaseLayout's static -z-30 backdrop: painting black would hide that
+    // image during texture load (the flash this was meant to remove), and the
+    // gradient belongs to BaseLayout so it is applied once over whichever
+    // backdrop is showing. See the note beside it there.
+    <div className="fixed inset-0 -z-20" aria-hidden="true">
       <Canvas
         dpr={[1, 2]}
         camera={{ position: [0, 0, 1] }}
@@ -224,7 +228,6 @@ export default function RippleBackground({ imageUrl = '/background.jpg' }: { ima
       >
         <InnerScene bgUrl={imageUrl} />
       </Canvas>
-      <div className="absolute inset-0 bg-gradient-to-b from-[#08152dcc] via-[#050b14cc] to-[#02040acc]" />
     </div>
   );
 }

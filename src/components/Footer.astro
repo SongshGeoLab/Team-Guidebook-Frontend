@@ -10,8 +10,9 @@ const site = await getSiteConfig(lang);
 const currentYear = new Date().getFullYear();
 ---
 
-<footer class="border-t border-gray-200 dark:border-gray-800 p-8 mt-8">
-  <div class="container mx-auto text-center text-gray-500 space-y-3">
+<!-- Same reasoning as Header: the backdrop is always dark. -->
+<footer class="border-t border-white/10 p-8 mt-8">
+  <div class="container mx-auto text-center text-gray-300 space-y-3">
     <p>&copy; {currentYear} {site.name}. {ui.shell.rightsReserved[lang]}</p>
 
     {
@@ -26,7 +27,7 @@ const currentYear = new Date().getFullYear();
               <a
                 href={social.url}
                 rel="me noopener"
-                class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                class="hover:text-teal-300 transition-colors"
               >
                 {social.label}
               </a>

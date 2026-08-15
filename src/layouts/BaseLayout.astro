@@ -43,9 +43,17 @@ const alternates = Astro.site && !noIndex
 ---
 
 <!doctype html>
-<html lang={lang}>
+<!--
+  class="dark" is unconditional, and paired with the color-scheme meta below.
+  The backdrop is a dark photograph on every page regardless of the reader's OS
+  setting, so the dark half of every `dark:` pair must always win — see the note
+  on @custom-variant in src/styles/global.css. color-scheme tells the browser to
+  match form controls, scrollbars and the like.
+-->
+<html lang={lang} class="dark">
   <head>
     <meta charset="UTF-8" />
+    <meta name="color-scheme" content="dark" />
     <meta name="description" content={description} />
     <!-- initial-scale=1 stops iOS zooming the page on load -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -96,7 +104,6 @@ const alternates = Astro.site && !noIndex
         fetchpriority="low"
         decoding="async"
       />
-      <div class="absolute inset-0 bg-gradient-to-b from-[#08152dcc] via-[#050b14cc] to-[#02040acc]"></div>
     </div>
 
     <!--
@@ -118,6 +125,22 @@ const alternates = Astro.site && !noIndex
       still needs the in-component check to stop the animation.
     -->
     <RippleBackground client:media="(prefers-reduced-motion: no-preference)" />
+
+    <!--
+      The tint over whichever backdrop is showing — the static image, or the
+      canvas once it mounts. It lives HERE, exactly once, and deliberately not
+      inside either of them.
+
+      It used to be inside RippleBackground; adding the static backdrop copied
+      it, and two 80%-opaque layers composite to 96%, not 80%. The page went
+      visibly murky and the header text stopped being legible against it.
+      Anything painting a full-viewport tint has to be a single element.
+    -->
+    <div
+      class="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-[#08152dcc] via-[#050b14cc] to-[#02040acc]"
+      aria-hidden="true"
+    >
+    </div>
     <!--
       Skip link. The header carries nine nav items plus a search icon and two
       language toggles, so a keyboard or screen-reader user otherwise tabs

@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/**
+ * `dark:` follows an explicit class, not the reader's OS setting.
+ *
+ * Every page sits on a fixed dark photograph under a dark tint, and that
+ * backdrop does not change with prefers-color-scheme. But all 65 `dark:`
+ * utilities in this codebase were gated on prefers-color-scheme, so a reader
+ * in LIGHT mode got the light half of every pair — #374151 nav links, near
+ * black body text and `prose` without `prose-invert` — rendered on top of that
+ * dark photo. The site was only legible for readers whose OS happened to be in
+ * dark mode.
+ *
+ * BaseLayout puts `class="dark"` on <html> unconditionally, so the dark half
+ * always wins. Rewriting the 65 utilities instead would have been 65 chances to
+ * miss one, and would have thrown away the ability to offer a light theme
+ * later — which now needs only for that class to become conditional.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Obsidian Callouts Styles */
 .admonition {
   @apply my-4 rounded-lg border-l-4 p-4;
