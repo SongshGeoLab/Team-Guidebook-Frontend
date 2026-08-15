@@ -4,7 +4,12 @@ import path from 'node:path';
 import fg from 'fast-glob';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
-import { getContentRoot, VAULT_DIRS } from '../../utils/contentLayout.js';
+import matter from 'gray-matter';
+import {
+  getContentRoot,
+  VAULT_DIRS,
+  PUBLICATION_SIDECAR_DIR,
+} from '../../utils/contentLayout.js';
 
 // Use createRequire to load CommonJS modules robustly in all environments
 const require = createRequire(import.meta.url);
@@ -28,6 +33,102 @@ interface PublicationItem {
 
 /** Zotero writes these into `keywords`; they are not research topics. */
 const LANGUAGE_KEYWORDS = new Set(['english', 'chinese', '中文', '英文']);
+
+/** What each BibTeX entry type means as a publication kind. */
+const TYPE_BY_BIBTEX_TYPE: Record<string, PublicationType> = {
+  article: 'journal',
+  inproceedings: 'conference',
+  conference: 'conference',
+  proceedings: 'conference',
+  incollection: 'chapter',
+  inbook: 'chapter',
+  book: 'book',
+  phdthesis: 'thesis',
+  mastersthesis: 'thesis',
+  // @misc is what Zotero writes for a preprint, and preprints are the entries a
+  // reader most needs distinguished from peer-reviewed work.
+  misc: 'preprint',
+  unpublished: 'preprint',
+};
+
+export type PublicationType =
+  | 'journal'
+  | 'conference'
+  | 'preprint'
+  | 'chapter'
+  | 'book'
+  | 'thesis'
+  | 'other';
+
+/**
+ * Read the entry type out of the raw BibTeX text.
+ *
+ * citation-js normalises `type` onto CSL names that collapse distinctions we
+ * want (both @article and @misc can arrive as 'article-journal'), so take it
+ * from the `@type{` token that `extractBibEntries` preserved verbatim.
+ */
+export function inferPublicationType(originalBibtex: string | undefined): PublicationType {
+  const match = /^\s*@(\w+)\s*\{/m.exec(originalBibtex ?? '');
+  if (!match) return 'other';
+  return TYPE_BY_BIBTEX_TYPE[match[1].toLowerCase()] ?? 'other';
+}
+
+/** Fields a sidecar note may contribute to a publication. */
+export interface PublicationSidecar {
+  bib_key: string;
+  featured?: boolean;
+  order?: number;
+  cover?: string;
+  highlight?: string;
+  highlight_en?: string;
+  author_ids?: string[];
+  code?: string;
+  data?: string;
+  type?: PublicationType;
+  press?: Array<{ outlet: string; outlet_en?: string; url: string; date?: string | Date }>;
+}
+
+/**
+ * Read the sidecar notes that enrich individual BibTeX entries.
+ *
+ * A `.bib` file is regenerated wholesale by Zotero, which drops any field it
+ * does not recognise — so a cover image or a one-line highlight written into
+ * the .bib would survive exactly until the next export. They live in
+ * `文献/精选/<bib_key>.md` instead and are joined here on the citation key.
+ *
+ * @param warn called with an actionable message for each sidecar that matches
+ *   no entry — silence would leave an author wondering why their highlight
+ *   never appeared.
+ */
+export function loadSidecars(
+  dir: string,
+  knownKeys: Set<string>,
+  warn: (message: string) => void = () => {}
+): Map<string, PublicationSidecar> {
+  const sidecars = new Map<string, PublicationSidecar>();
+  if (!fs.existsSync(dir)) return sidecars;
+
+  for (const file of fg.globSync('**/*.md', { cwd: dir })) {
+    const { data } = matter(fs.readFileSync(path.join(dir, file), 'utf-8'));
+    if (data.publish === false) continue;
+
+    // Default the key to the filename: naming the file after the citation key
+    // is the obvious convention, and repeating it in frontmatter is a second
+    // place to get it wrong.
+    const bibKey = String(data.bib_key ?? path.basename(file, '.md')).trim();
+    if (!bibKey) continue;
+
+    if (!knownKeys.has(bibKey)) {
+      warn(
+        `[publications] sidecar ${file} references bib_key "${bibKey}", which no ` +
+          `.bib entry defines — the highlight will not appear on any publication`
+      );
+      continue;
+    }
+    sidecars.set(bibKey, { ...(data as PublicationSidecar), bib_key: bibKey });
+  }
+  return sidecars;
+}
 
 /**
  * Extract individual BibTeX entries from a BibTeX file.
@@ -226,7 +327,9 @@ export function publicationsLoader(): Loader {
       // page indefinitely.
       context.store.clear();
 
-      
+      /** Every entry across every .bib, before the sidecar merge. */
+      const parsed: Array<PublicationItem & { type: PublicationType }> = [];
+
       // Try 图书馆/文献/ first, then fallback to 图书馆/ root
       const publicationsDir = path.join(contentRoot, VAULT_DIRS.library, '文献');
       const libraryRoot = path.join(contentRoot, VAULT_DIRS.library);
@@ -333,23 +436,14 @@ export function publicationsLoader(): Loader {
               context.logger.warn(m)
             );
 
+            // Collected rather than stored immediately: the sidecar join below
+            // needs the full set of citation keys, so that a sidecar naming a
+            // key defined in a *different* .bib file still resolves, and so an
+            // unmatched one can be reported rather than silently ignored.
             if (publication) {
-              context.store.set({
-                digest: context.generateDigest?.(JSON.stringify(publication)),
-                id: publication.id,
-                data: {
-                  title: publication.title,
-                  authors: publication.authors,
-                  venue: publication.venue,
-                  year: publication.year,
-                  bib_key: publication.bib_key,
-                  bibtex: publication.bibtex,
-                  doi: publication.doi,
-                  pdf: publication.pdf,
-                  tags: publication.tags,
-                  publish: publication.publish,
-                  date: publication.date,
-                }
+              parsed.push({
+                ...publication,
+                type: inferPublicationType(bibtexString),
               });
             }
           }
@@ -359,6 +453,47 @@ export function publicationsLoader(): Loader {
           );
           // Continue processing other files
         }
+      }
+
+      const sidecars = loadSidecars(
+        path.join(searchDir, PUBLICATION_SIDECAR_DIR),
+        new Set(parsed.map((p) => p.id)),
+        (m) => context.logger.warn(m)
+      );
+
+      for (const publication of parsed) {
+        const extra = sidecars.get(publication.id);
+        const data = {
+          title: publication.title,
+          authors: publication.authors,
+          venue: publication.venue,
+          year: publication.year,
+          bib_key: publication.bib_key,
+          bibtex: publication.bibtex,
+          doi: publication.doi,
+          pdf: publication.pdf,
+          tags: publication.tags,
+          publish: publication.publish,
+          date: publication.date,
+          // The sidecar may correct an inferred type — @misc covers both a
+          // preprint and a dataset, and only a human can tell them apart.
+          type: extra?.type ?? publication.type,
+          featured: extra?.featured ?? false,
+          order: extra?.order,
+          cover: extra?.cover,
+          highlight: extra?.highlight,
+          highlight_en: extra?.highlight_en,
+          author_ids: extra?.author_ids ?? [],
+          code: extra?.code,
+          data: extra?.data,
+          press: extra?.press ?? [],
+        };
+
+        context.store.set({
+          digest: context.generateDigest?.(JSON.stringify(data)),
+          id: publication.id,
+          data,
+        });
       }
       };
 

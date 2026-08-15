@@ -26,8 +26,10 @@ export const ui = {
    */
   nav: {
     home: { zh: '首页', en: 'Home' } satisfies Dict,
+    research: { zh: '研究', en: 'Research' } satisfies Dict,
     news: { zh: '动态', en: 'News' } satisfies Dict,
     projects: { zh: '项目', en: 'Projects' } satisfies Dict,
+    resources: { zh: '资源', en: 'Resources' } satisfies Dict,
     library: { zh: '图书馆', en: 'Library' } satisfies Dict,
     publications: { zh: '出版物', en: 'Publications' } satisfies Dict,
     people: { zh: '团队', en: 'People' } satisfies Dict,
@@ -54,6 +56,41 @@ export const ui = {
   projects: {
     title: { zh: '研究项目', en: 'Projects' } satisfies Dict,
     description: { zh: '实验室研究项目', en: 'Lab research projects' } satisfies Dict
+  },
+  research: {
+    title: { zh: '研究方向', en: 'Research' } satisfies Dict,
+    description: {
+      zh: '我们长期关注的研究主题',
+      en: 'The questions the group works on'
+    } satisfies Dict,
+    empty: {
+      zh: '尚未添加研究方向。',
+      en: 'No research themes have been added yet.'
+    } satisfies Dict,
+    people: { zh: '相关成员', en: 'People' } satisfies Dict,
+    publications: { zh: '代表论文', en: 'Selected Publications' } satisfies Dict,
+    projects: { zh: '相关项目', en: 'Related Projects' } satisfies Dict
+  },
+  resources: {
+    title: { zh: '数据与工具', en: 'Resources' } satisfies Dict,
+    description: {
+      zh: '实验室对外发布的数据集、代码与模型',
+      en: 'Datasets, code and models the group publishes'
+    } satisfies Dict,
+    empty: {
+      zh: '尚未发布资源。',
+      en: 'No resources have been published yet.'
+    } satisfies Dict,
+    license: { zh: '许可协议', en: 'Licence' } satisfies Dict,
+    released: { zh: '发布时间', en: 'Released' } satisfies Dict
+  },
+  /** Labels for the `type` enum on the resources collection. */
+  resourceTypes: {
+    dataset: { zh: '数据集', en: 'Dataset' } satisfies Dict,
+    code: { zh: '代码', en: 'Code' } satisfies Dict,
+    model: { zh: '模型', en: 'Model' } satisfies Dict,
+    tool: { zh: '工具', en: 'Tool' } satisfies Dict,
+    course: { zh: '课程', en: 'Course' } satisfies Dict
   },
   publications: {
     title: { zh: '论文发表', en: 'Publications' } satisfies Dict,

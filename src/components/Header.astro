@@ -27,11 +27,13 @@ const withLang = (lang: Lang) => {
 // unset is the safe default — see the `nav` field's note in content.config.ts.
 const defaultNav = [
   { label: ui.nav.home[currentLang], href: `/${currentLang}/` },
-  { label: ui.nav.news[currentLang], href: `/${currentLang}/news/` },
-  { label: ui.nav.projects[currentLang], href: `/${currentLang}/projects/` },
-  { label: ui.nav.library[currentLang], href: `/${currentLang}/library/` },
+  { label: ui.nav.research[currentLang], href: `/${currentLang}/research/` },
   { label: ui.nav.publications[currentLang], href: `/${currentLang}/publications/` },
   { label: ui.nav.people[currentLang], href: `/${currentLang}/people/` },
+  { label: ui.nav.projects[currentLang], href: `/${currentLang}/projects/` },
+  { label: ui.nav.resources[currentLang], href: `/${currentLang}/resources/` },
+  { label: ui.nav.news[currentLang], href: `/${currentLang}/news/` },
+  { label: ui.nav.library[currentLang], href: `/${currentLang}/library/` },
   { label: ui.nav.about[currentLang], href: `/${currentLang}/about/` }
 ];
 const nav = site.nav ?? defaultNav;

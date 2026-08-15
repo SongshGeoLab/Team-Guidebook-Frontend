@@ -75,7 +75,7 @@ export function findContentRoot(sentinel = VAULT_DIRS.library) {
  * both at /[lang]/projects/<id> and at /[lang]/library/项目/<id>, the latter
  * through a passthrough schema that knows nothing about project fields.
  */
-export const OWNED_BY_OTHER_COLLECTIONS = ['项目', '文献'];
+export const OWNED_BY_OTHER_COLLECTIONS = ['项目', '文献', '研究', '资源'];
 
 /** Glob patterns for the same rule, for loaders that take exclusions. */
 export const OWNED_BY_OTHER_COLLECTIONS_GLOBS = OWNED_BY_OTHER_COLLECTIONS.map(
@@ -106,8 +106,20 @@ export const TRANSLATION_GLOBS = CONTENT_LOCALES.map((locale) => `!**/*.${locale
 export const COLLECTION_VAULT_PATHS = {
   people: '通讯录',
   projects: '图书馆/项目',
+  research: '图书馆/研究',
+  resources: '图书馆/资源',
   library: '图书馆',
 };
+
+/**
+ * Where the publications sidecars live, under the vault's 文献/ directory.
+ *
+ * A `.bib` file is the authority on citation facts and is regenerated wholesale
+ * by Zotero, which drops any non-standard field written into it. Anything the
+ * site adds — a cover image, a one-line highlight, links to code and data —
+ * therefore has to live beside it, keyed by citation key.
+ */
+export const PUBLICATION_SIDECAR_DIR = '精选';
 
 /**
  * Does this collection id / relative path belong to another collection?

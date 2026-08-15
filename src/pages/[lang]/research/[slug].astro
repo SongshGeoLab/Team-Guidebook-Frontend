@@ -1,0 +1,130 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { entrySlug } from '../../../utils/entrySlug';
+import { pickLocalized, translationIndex } from '../../../utils/localized';
+import { COLLECTION_VAULT_PATHS } from '../../../utils/contentLayout.js';
+import { LOCALES, ui, type Lang } from '../../../i18n/ui';
+
+export async function getStaticPaths() {
+  const themes = await getCollection('research', ({ data }) => data.publish !== false);
+  const translations = await getCollection('translations', ({ data }) => data.publish !== false);
+  const people = await getCollection('people', ({ data }) => data.publish !== false);
+  const publications = await getCollection('publications', ({ data }) => data.publish !== false);
+  const projects = await getCollection('projects', ({ data }) => data.publish !== false);
+
+  return LOCALES.flatMap((lang) => {
+    const overlays = translationIndex(translations, COLLECTION_VAULT_PATHS.research, lang);
+    return themes.map((theme) => ({
+      params: { lang, slug: entrySlug(theme) },
+      props: {
+        theme,
+        overlay: overlays.get(theme.id),
+        // Resolved here rather than in the template so an id matching nothing
+        // is dropped once instead of rendering a dead link.
+        //
+        // flatMap, not map + filter(Boolean): the latter does not narrow away
+        // `undefined` in TypeScript, so every downstream read would need a
+        // non-null assertion — which is exactly how a missing reference turns
+        // into a runtime crash instead of an omitted list item.
+        people: theme.data.people.flatMap((id) => {
+          const match = people.find((p) => entrySlug(p) === id || p.data.id === id);
+          return match ? [match] : [];
+        }),
+        publications: theme.data.featured_publications.flatMap((key) => {
+          const match = publications.find((p) => p.data.bib_key === key || p.id === key);
+          return match ? [match] : [];
+        }),
+        projects: theme.data.projects.flatMap((id) => {
+          const match = projects.find((p) => entrySlug(p) === id || p.data.id === id);
+          return match ? [match] : [];
+        }),
+      },
+    }));
+  });
+}
+
+const lang = Astro.params.lang as Lang;
+const { theme, overlay, people, publications, projects } = Astro.props;
+
+const { Content } = await render(overlay ?? theme);
+const isFallback = lang !== 'zh' && !overlay;
+
+const title = pickLocalized(theme.data, 'title', lang) ?? theme.data.title;
+const summary = pickLocalized(theme.data, 'summary', lang);
+---
+
+<BaseLayout title={title} description={summary ?? title} lang={lang}>
+  <article class="prose dark:prose-invert max-w-none">
+    <h1>{title}</h1>
+    {summary && <p class="lead">{summary}</p>}
+
+    {
+      isFallback && (
+        <p class="not-prose my-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-800 dark:text-amber-200">
+          {ui.i18n.fallbackNotice[lang]}
+        </p>
+      )
+    }
+
+    <Content />
+
+    {
+      people.length > 0 && (
+        <section>
+          <h2>{ui.research.people[lang]}</h2>
+          <ul>
+            {people.map((person) => (
+              <li>
+                <a href={`/${lang}/people/${entrySlug(person)}`}>
+                  {pickLocalized(person.data, 'name', lang) ?? person.data.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      publications.length > 0 && (
+        <section>
+          <h2>{ui.research.publications[lang]}</h2>
+          <ul>
+            {publications.map((pub) => (
+              <li>
+                {pub.data.doi || pub.data.pdf ? (
+                  <a href={pub.data.doi ?? pub.data.pdf}>{pub.data.title}</a>
+                ) : (
+                  pub.data.title
+                )}
+                {pub.data.venue && <em> — {pub.data.venue}</em>}
+                {pub.data.year && ` (${pub.data.year})`}
+                {pickLocalized(pub.data, 'highlight', lang) && (
+                  <p class="text-sm">{pickLocalized(pub.data, 'highlight', lang)}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      projects.length > 0 && (
+        <section>
+          <h2>{ui.research.projects[lang]}</h2>
+          <ul>
+            {projects.map((project) => (
+              <li>
+                <a href={`/${lang}/projects/${entrySlug(project)}`}>
+                  {pickLocalized(project.data, 'title', lang) ?? project.data.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </article>
+</BaseLayout>

@@ -1,0 +1,91 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { pickLocalized } from '../../../utils/localized';
+import { formatDay } from '../../../utils/formatDate';
+import { LOCALES, ui, type Lang } from '../../../i18n/ui';
+
+export function getStaticPaths() {
+  return LOCALES.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+
+// Newest first: a resources page is a list of things to go and get, and the
+// most recent release is almost always the one a visitor wants.
+const resources = (await getCollection('resources', ({ data }) => data.publish !== false)).sort(
+  (a, b) => (b.data.released?.getTime() ?? 0) - (a.data.released?.getTime() ?? 0)
+);
+---
+
+<BaseLayout title={ui.resources.title[lang]} description={ui.resources.description[lang]} lang={lang}>
+  <div class="space-y-8">
+    <div>
+      <h1 class="text-3xl md:text-4xl font-light mb-2 tracking-tight">{ui.resources.title[lang]}</h1>
+      <p class="text-lg text-gray-600 dark:text-gray-400">{ui.resources.description[lang]}</p>
+    </div>
+
+    {
+      resources.length === 0 ? (
+        <p class="text-gray-500 dark:text-gray-400">{ui.resources.empty[lang]}</p>
+      ) : (
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-6 list-none p-0">
+          {resources.map((resource) => (
+            <li class="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div class="mb-2 flex items-center gap-2">
+                <span class="rounded-full border border-teal-500/30 px-2 py-0.5 text-xs uppercase tracking-wider text-teal-300">
+                  {ui.resourceTypes[resource.data.type][lang]}
+                </span>
+                {resource.data.version && (
+                  <span class="font-mono text-xs text-gray-400">{resource.data.version}</span>
+                )}
+              </div>
+
+              <h2 class="mb-2 text-xl font-medium">
+                <a
+                  href={resource.data.url}
+                  rel="noopener"
+                  class="hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300"
+                >
+                  {pickLocalized(resource.data, 'title', lang) ?? resource.data.title}
+                </a>
+              </h2>
+
+              <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+                {pickLocalized(resource.data, 'summary', lang)}
+              </p>
+
+              <dl class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                {resource.data.license && (
+                  <div>
+                    <dt class="inline font-medium">{ui.resources.license[lang]}</dt>
+                    <dd class="inline ml-1">{resource.data.license}</dd>
+                  </div>
+                )}
+                {resource.data.released && (
+                  <div>
+                    <dt class="inline font-medium">{ui.resources.released[lang]}</dt>
+                    <dd class="inline ml-1">{formatDay(resource.data.released, lang)}</dd>
+                  </div>
+                )}
+                {resource.data.doi && (
+                  <div>
+                    <dt class="inline font-medium">DOI</dt>
+                    <dd class="inline ml-1">
+                      <a
+                        href={resource.data.doi.startsWith('http') ? resource.data.doi : `https://doi.org/${resource.data.doi}`}
+                        class="hover:underline"
+                      >
+                        {resource.data.doi}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</BaseLayout>

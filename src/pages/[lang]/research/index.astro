@@ -1,0 +1,60 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { entrySlug } from '../../../utils/entrySlug';
+import { pickLocalized } from '../../../utils/localized';
+import { LOCALES, ui, type Lang } from '../../../i18n/ui';
+
+export function getStaticPaths() {
+  return LOCALES.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+
+// Themes are few and hand-ordered — `order` is required-with-a-default rather
+// than optional, because "whatever the filesystem returned" is not an ordering
+// anyone chose.
+const themes = (await getCollection('research', ({ data }) => data.publish !== false)).sort(
+  (a, b) => a.data.order - b.data.order
+);
+---
+
+<BaseLayout title={ui.research.title[lang]} description={ui.research.description[lang]} lang={lang}>
+  <div class="space-y-8">
+    <div>
+      <h1 class="text-3xl md:text-4xl font-light mb-2 tracking-tight">{ui.research.title[lang]}</h1>
+      <p class="text-lg text-gray-600 dark:text-gray-400">{ui.research.description[lang]}</p>
+    </div>
+
+    {
+      themes.length === 0 ? (
+        <p class="text-gray-500 dark:text-gray-400">{ui.research.empty[lang]}</p>
+      ) : (
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {themes.map((theme) => (
+            <a
+              href={`/${lang}/research/${entrySlug(theme)}`}
+              class="block rounded-2xl border border-white/10 bg-white/5 p-6 transition-colors hover:border-teal-300/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-300"
+            >
+              {theme.data.cover && (
+                <img
+                  src={theme.data.cover}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  class="mb-4 aspect-video w-full rounded-lg object-cover"
+                />
+              )}
+              <h2 class="text-xl font-medium mb-2">
+                {pickLocalized(theme.data, 'title', lang) ?? theme.data.title}
+              </h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                {pickLocalized(theme.data, 'summary', lang)}
+              </p>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
+</BaseLayout>

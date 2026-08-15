@@ -123,6 +123,58 @@ const projectsSchema = z.object({
 });
 
 /**
+ * Research themes — the evergreen directions the group works on.
+ * Maps from: .content/Team-Guidebook/图书馆/研究/
+ *
+ * Deliberately distinct from `projects`. A project has a start date, an end
+ * date and a funder; a theme has neither and outlives any one project. Folding
+ * them together would mean either dating a theme arbitrarily or making
+ * `start_date` optional on projects, and a reader would lose the distinction
+ * between "what we study" and "what we are currently paid to do".
+ */
+const researchSchema = z.object({
+  publish: baseSchema.publish,
+  tags: baseSchema.tags,
+  id: z.string().describe('Unique identifier (slug)'),
+  title: z.string().describe('Theme name'),
+  title_en: z.string().optional(),
+  summary: z.string().optional().describe('One or two lines for the card'),
+  summary_en: z.string().optional(),
+  order: z.number().default(0).describe('Display order; themes are few and hand-ordered'),
+  cover: z.string().optional().describe('Illustration path under /attachments'),
+  people: z.array(z.string()).default([]).describe('Person ids leading this theme'),
+  /** BibTeX keys. The join is checked at build time by the research page. */
+  featured_publications: z.array(z.string()).default([]).describe('bib_key values to showcase'),
+  projects: z.array(z.string()).default([]).describe('Project ids under this theme'),
+});
+
+/**
+ * Datasets, code and tools the group publishes.
+ * Maps from: .content/Team-Guidebook/图书馆/资源/
+ */
+const resourcesSchema = z.object({
+  publish: baseSchema.publish,
+  tags: baseSchema.tags,
+  id: z.string().describe('Unique identifier (slug)'),
+  title: z.string(),
+  title_en: z.string().optional(),
+  type: z
+    .enum(['dataset', 'code', 'model', 'tool', 'course'])
+    .describe('What kind of resource this is; drives the icon and the filter'),
+  summary: z.string().optional(),
+  summary_en: z.string().optional(),
+  url: z.string().url().describe('Where to get it'),
+  doi: z.string().optional().describe('DOI for citing the resource itself'),
+  repo: z.string().url().optional(),
+  license: z.string().optional().describe('SPDX identifier or licence name'),
+  version: z.string().optional(),
+  released: z.union([z.date(), z.string()]).optional().transform(val => val ? new Date(val) : undefined),
+  people: z.array(z.string()).default([]).describe('Person ids who maintain it'),
+  bib_key: z.string().optional().describe('The paper to cite when using this'),
+  cover: z.string().optional(),
+});
+
+/**
  * News collection schema.
  * Maps from: .content/Team-Guidebook/档案馆/YYYY-MM-DD.md (Daily Notes)
  * Note: This requires a custom loader to extract bullet items from Daily Notes.
@@ -170,11 +222,74 @@ const publicationsSchema = z.object({
   authors: z.array(z.string()).describe('Author names'),
   venue: z.string().optional().describe('Publication venue (journal, conference, etc.)'),
   year: z.number().int().optional().describe('Publication year; absent when the entry has no parseable date'),
-  bib_key: z.string().optional().describe('BibTeX key for citation'),
+  bib_key: z.string().optional().describe('BibTeX key; the join key for sidecars and cross-references'),
   bibtex: z.string().optional().describe('Original BibTeX entry string'),
   doi: z.string().url().optional().describe('DOI URL'),
   pdf: z.string().optional().describe('PDF file path in attachments'),
-  tags: z.array(z.string()).default([]).describe('Research topic tags for filtering'),
+  // Re-declared with baseSchema's null tolerance restored. Spreading baseSchema
+  // and then overriding `tags` dropped it, so `tags: null` — which every other
+  // collection accepts — failed validation here alone.
+  tags: baseSchema.tags.describe('Research topic tags for filtering'),
+  /** Inferred from the BibTeX entry type (@article, @inproceedings, …). */
+  type: z
+    .enum(['journal', 'conference', 'preprint', 'chapter', 'book', 'thesis', 'other'])
+    .default('other')
+    .describe('Publication kind'),
+
+  // ---- Fields below come from a sidecar note, not from the .bib ----
+  // Zotero rewrites .bib files wholesale and drops non-standard fields, so
+  // anything the site adds has to live beside it. See PUBLICATION_SIDECAR_DIR.
+  featured: z.boolean().default(false).describe('Showcase on the home and research pages'),
+  order: z.number().optional().describe('Sort key among featured publications'),
+  cover: z.string().optional().describe('Figure or cover image under /attachments'),
+  highlight: z.string().optional().describe('One line on why this paper matters'),
+  highlight_en: z.string().optional(),
+  author_ids: z.array(z.string()).default([]).describe('Person ids for the lab authors'),
+  code: z.string().url().optional().describe('Repository implementing the paper'),
+  data: z.string().url().optional().describe('Dataset behind the paper'),
+  press: z
+    .array(
+      z.object({
+        outlet: z.string(),
+        outlet_en: z.string().optional(),
+        url: z.string().url(),
+        date: z.union([z.date(), z.string()]).optional(),
+      })
+    )
+    .default([])
+    .describe('Media coverage'),
+});
+
+/**
+ * Sidecar note enriching one BibTeX entry.
+ * Maps from: .content/Team-Guidebook/图书馆/文献/精选/<bib_key>.md
+ *
+ * Validated as its own collection so a malformed sidecar names its own file in
+ * the error, rather than surfacing as a confusing failure inside the
+ * publications loader. The loader reads the same files and merges them.
+ */
+const publicationHighlightSchema = z.object({
+  publish: baseSchema.publish,
+  bib_key: z.string().describe('Citation key of the entry this enriches'),
+  featured: z.boolean().default(true),
+  order: z.number().optional(),
+  cover: z.string().optional(),
+  highlight: z.string().optional(),
+  highlight_en: z.string().optional(),
+  author_ids: z.array(z.string()).default([]),
+  code: z.string().url().optional(),
+  data: z.string().url().optional(),
+  type: z.enum(['journal', 'conference', 'preprint', 'chapter', 'book', 'thesis', 'other']).optional(),
+  press: z
+    .array(
+      z.object({
+        outlet: z.string(),
+        outlet_en: z.string().optional(),
+        url: z.string().url(),
+        date: z.union([z.date(), z.string()]).optional(),
+      })
+    )
+    .default([]),
 });
 
 /**
@@ -302,9 +417,41 @@ export const collections = {
     }),
     schema: librarySchema,
   }),
+  research: defineCollection({
+    loader: glob({
+      pattern: ['**/*.md', ...TRANSLATION_GLOBS],
+      base: './src/content/library/研究',
+      generateId: keepPathAsId,
+    }),
+    schema: researchSchema,
+  }),
+  resources: defineCollection({
+    loader: glob({
+      pattern: ['**/*.md', ...TRANSLATION_GLOBS],
+      base: './src/content/library/资源',
+      generateId: keepPathAsId,
+    }),
+    schema: resourcesSchema,
+  }),
   publications: defineCollection({
+    // Reads the .bib files AND merges the sidecars from 文献/精选/.
     loader: publicationsLoader(),
     schema: publicationsSchema,
+  }),
+  /**
+   * The sidecars again, as their own collection.
+   *
+   * Redundant with the merge inside publicationsLoader, and deliberately so:
+   * this is what validates them. A typo in a sidecar reports as an error
+   * naming that file, instead of silently failing to enrich a paper.
+   */
+  publicationHighlights: defineCollection({
+    loader: glob({
+      pattern: ['**/*.md', ...TRANSLATION_GLOBS],
+      base: './src/content/library/文献/精选',
+      generateId: keepPathAsId,
+    }),
+    schema: publicationHighlightSchema,
   }),
 };
 
